@@ -7,3 +7,68 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+
+enum ReservationStatus {
+  pending
+  confirmed
+  released
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  sku          String        @unique @db.VarChar(64)
+  name         String        @db.VarChar(160)
+  description  String        @db.Text
+  imageUrl     String?       @db.Text
+  createdAt    DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(6)
+  stockLevels  StockLevel[]
+  reservations Reservation[]
+}
+
+model Warehouse {
+  id           String        @id @default(cuid())
+  code         String        @unique @db.VarChar(32)
+  name         String        @db.VarChar(160)
+  city         String        @db.VarChar(120)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(6)
+  stockLevels  StockLevel[]
+  reservations Reservation[]
+}
+
+model StockLevel {
+  id            String    @id @default(cuid())
+  productId     String
+  warehouseId   String
+  totalUnits    Int       @default(0)
+  reservedUnits Int       @default(0)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse     Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, warehouseId])
+  @@index([warehouseId])
+}
+
+model Reservation {
+  id          String            @id @default(cuid())
+  productId   String
+  warehouseId String
+  quantity    Int
+  status      ReservationStatus @default(pending)
+  expiresAt   DateTime          @db.Timestamptz(6)
+  confirmedAt DateTime?         @db.Timestamptz(6)
+  releasedAt  DateTime?         @db.Timestamptz(6)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(6)
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse   Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([status, expiresAt])
+}

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateAvailableStock,
   getReservationTtlMinutes,
   reservationStatuses,
+  validateStockInvariants,
 } from "@/lib/domain/reservations";
 import { createReservationRequestSchema } from "@/lib/validation/reservations";
 
@@ -39,5 +41,44 @@ describe("reservation foundation", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("calculates available stock from total and reserved units", () => {
+    expect(calculateAvailableStock({ totalUnits: 25, reservedUnits: 7 })).toBe(
+      18,
+    );
+  });
+
+  it("accepts valid stock invariants", () => {
+    expect(
+      validateStockInvariants({ totalUnits: 10, reservedUnits: 10 }),
+    ).toEqual({ valid: true });
+  });
+
+  it("rejects negative total units", () => {
+    expect(
+      validateStockInvariants({ totalUnits: -1, reservedUnits: 0 }),
+    ).toEqual({
+      valid: false,
+      reason: "totalUnits must be greater than or equal to 0",
+    });
+  });
+
+  it("rejects negative reserved units", () => {
+    expect(
+      validateStockInvariants({ totalUnits: 10, reservedUnits: -1 }),
+    ).toEqual({
+      valid: false,
+      reason: "reservedUnits must be greater than or equal to 0",
+    });
+  });
+
+  it("rejects reserved units above total units", () => {
+    expect(
+      validateStockInvariants({ totalUnits: 5, reservedUnits: 6 }),
+    ).toEqual({
+      valid: false,
+      reason: "reservedUnits cannot exceed totalUnits",
+    });
   });
 });
