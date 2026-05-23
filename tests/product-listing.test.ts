@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { getReserveErrorMessage } from "@/lib/ui/product-listing";
+import {
+  getReserveErrorMessage,
+  summarizeInventory,
+} from "@/lib/ui/product-listing";
 
 describe("product listing helpers", () => {
   it("shows a clear stock message for 409 responses", () => {
@@ -13,7 +16,7 @@ describe("product listing helpers", () => {
         },
       }),
     ).toBe(
-      "Not enough stock available in this warehouse. Inventory has been refreshed.",
+      "Not enough stock available in this warehouse. Live inventory has been refreshed.",
     );
   });
 
@@ -36,5 +39,43 @@ describe("product listing helpers", () => {
     expect(getReserveErrorMessage(null)).toBe(
       "Unable to reserve inventory right now.",
     );
+  });
+
+  it("summarizes inventory across products and warehouses", () => {
+    expect(
+      summarizeInventory([
+        {
+          stockLevels: [
+            {
+              warehouse: { id: "blr" },
+              totalUnits: 10,
+              reservedUnits: 2,
+              availableUnits: 8,
+            },
+            {
+              warehouse: { id: "bom" },
+              totalUnits: 5,
+              reservedUnits: 1,
+              availableUnits: 4,
+            },
+          ],
+        },
+        {
+          stockLevels: [
+            {
+              warehouse: { id: "blr" },
+              totalUnits: 7,
+              reservedUnits: 3,
+              availableUnits: 4,
+            },
+          ],
+        },
+      ]),
+    ).toEqual({
+      warehouseCount: 2,
+      totalUnits: 22,
+      reservedUnits: 6,
+      availableUnits: 16,
+    });
   });
 });

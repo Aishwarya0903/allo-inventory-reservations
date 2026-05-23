@@ -2,8 +2,11 @@
 
 import {
   ArrowLeft,
+  Check,
   CheckCircle2,
   Clock3,
+  Layers3,
+  MapPin,
   RefreshCw,
   Store,
   Warehouse,
@@ -13,6 +16,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SiteHeader } from "@/components/ui/site-header";
 import {
   formatReservationCountdown,
   getReservationActionErrorMessage,
@@ -48,12 +52,12 @@ function formatTimestamp(timestamp: string | null) {
 function getStatusTone(status: ReservationCheckoutDetail["status"]) {
   switch (status) {
     case "confirmed":
-      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+      return "border-emerald-400/25 bg-emerald-400/10 text-emerald-200";
     case "released":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "border-amber-400/25 bg-amber-400/10 text-amber-100";
     case "pending":
     default:
-      return "border-sky-200 bg-sky-50 text-sky-800";
+      return "border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--foreground)]";
   }
 }
 
@@ -194,39 +198,50 @@ export function ReservationCheckout({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
-        <div className="mt-4 h-10 w-80 animate-pulse rounded bg-slate-100" />
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="h-28 animate-pulse rounded bg-slate-100" />
-          <div className="h-28 animate-pulse rounded bg-slate-100" />
+      <main className="min-h-screen pb-16 text-[var(--foreground)]">
+        <SiteHeader currentPath="reservation" />
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="surface-card-strong rounded-[36px] p-8 sm:p-10">
+            <div className="h-4 w-32 animate-pulse rounded-full bg-white/10" />
+            <div className="mt-5 h-14 w-72 animate-pulse rounded-full bg-white/10" />
+            <div className="mt-8 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="h-72 animate-pulse rounded-[28px] border border-app-soft bg-app-veil" />
+              <div className="h-72 animate-pulse rounded-[28px] border border-app-soft bg-app-veil" />
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (pageError) {
     return (
-      <div className="rounded-md border border-rose-200 bg-rose-50 p-8 text-rose-900 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-700">
-          Reservation unavailable
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-          {pageError}
-        </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-rose-800">
-          The reservation detail could not be loaded from the API. If the hold
-          was just created, refresh the product listing and try again.
-        </p>
-        <div className="mt-6">
-          <Button asChild variant="outline">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Back to inventory
-            </Link>
-          </Button>
+      <main className="min-h-screen pb-16 text-[var(--foreground)]">
+        <SiteHeader currentPath="reservation" />
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="surface-card-strong rounded-[36px] border border-rose-400/20 bg-[linear-gradient(135deg,rgba(131,31,52,0.16),rgba(16,20,16,0.08))] p-8 sm:p-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-200">
+              Reservation unavailable
+            </p>
+            <h1 className="font-display mt-4 text-4xl tracking-[-0.03em] text-[var(--foreground)]">
+              {pageError}
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-app-muted sm:text-base">
+              The reservation detail could not be loaded from the API. If the hold
+              was just created, return to the inventory surface and retry the
+              flow after the latest product data refreshes.
+            </p>
+            <div className="mt-8">
+              <Button asChild variant="outline">
+                <Link href="/">
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  Back to inventory
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -242,12 +257,14 @@ export function ReservationCheckout({
   const expiresAt = formatTimestamp(reservation.expiresAt);
 
   return (
-    <div className="grid gap-6">
-      <section className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-6 sm:px-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-3xl">
-              <div className="mb-4">
+    <main className="min-h-screen pb-16 text-[var(--foreground)]">
+      <SiteHeader currentPath="reservation" />
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="surface-card-strong overflow-hidden rounded-[36px] border border-app-strong">
+          <div className="grid gap-6 border-b border-app-soft px-6 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:px-10 lg:py-10">
+            <div className="max-w-4xl">
+              <div className="mb-5">
                 <Button asChild variant="outline" size="sm">
                   <Link href="/">
                     <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -255,220 +272,228 @@ export function ReservationCheckout({
                   </Link>
                 </Button>
               </div>
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-sm font-medium uppercase tracking-[0.2em] text-app-soft">
                 Checkout hold
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+              <h1 className="font-display mt-4 text-4xl leading-[0.96] tracking-[-0.03em] text-[var(--foreground)] sm:text-5xl">
                 Complete the reservation before the hold expires.
               </h1>
-              <p className="mt-4 text-base leading-7 text-slate-650">
-                This screen represents the short reservation window between
-                stock allocation and payment completion. Confirming the hold
-                finalizes inventory. Cancelling releases it back to the
-                warehouse pool.
+              <p className="mt-5 max-w-3xl text-sm leading-7 text-app-muted sm:text-base">
+                This screen manages the short inventory hold between checkout
+                initiation and payment completion. Confirming commits the stock.
+                Cancelling or expiry releases it back to the warehouse pool.
               </p>
             </div>
+
             <div
-              className={`inline-flex rounded-full border px-3 py-1.5 text-sm font-semibold ${getStatusTone(
+              className={`inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${getStatusTone(
                 reservation.status,
               )}`}
             >
               {getStatusLabel(reservation.status)}
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[1.3fr_0.7fr]">
-          <div className="grid gap-4">
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-900 text-white">
-                  <Store className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
-                    Product
+          <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_360px] lg:px-10 lg:py-8">
+            <div className="grid gap-6">
+              <div className="surface-card rounded-[30px] p-6">
+                <div className="flex items-start gap-4">
+                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[22px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.18),rgba(222,129,99,0.16))] text-[var(--foreground)]">
+                    <Store className="h-6 w-6" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
+                      Product
+                    </p>
+                    <h2 className="font-display mt-3 text-3xl tracking-[-0.02em] text-[var(--foreground)]">
+                      {reservation.product.name}
+                    </h2>
+                    <p className="mt-2 font-mono text-sm text-app-soft">
+                      {reservation.product.sku}
+                    </p>
+                    <p className="mt-4 max-w-2xl text-sm leading-7 text-app-muted">
+                      {reservation.product.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="surface-card rounded-[30px] p-6">
+                  <div className="flex items-start gap-4">
+                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-app-soft bg-app-veil text-[var(--foreground)]">
+                      <Warehouse className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
+                        Warehouse
+                      </p>
+                      <p className="mt-3 text-xl font-semibold text-[var(--foreground)]">
+                        {reservation.warehouse.name}
+                      </p>
+                      <p className="mt-2 inline-flex items-center gap-2 text-sm text-app-muted">
+                        <MapPin className="h-4 w-4" aria-hidden="true" />
+                        {reservation.warehouse.code} · {reservation.warehouse.city}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="surface-card rounded-[30px] p-6">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
+                    Hold details
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-950">
-                    {reservation.product.name}
-                  </h2>
-                  <p className="mt-1 font-mono text-sm text-slate-500">
-                    {reservation.product.sku}
-                  </p>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-650">
-                    {reservation.product.description}
-                  </p>
+                  <dl className="mt-4 grid gap-3 text-sm text-app-muted">
+                    <div className="flex items-start justify-between gap-4 rounded-2xl border border-app-soft bg-app-veil px-4 py-3">
+                      <dt>Reservation ID</dt>
+                      <dd className="font-mono text-right text-xs text-[var(--foreground)]">
+                        {reservation.id}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-2xl border border-app-soft bg-app-veil px-4 py-3">
+                      <dt>Quantity</dt>
+                      <dd className="font-semibold text-[var(--foreground)]">
+                        {reservation.quantity}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-2xl border border-app-soft bg-app-veil px-4 py-3">
+                      <dt>Expires at</dt>
+                      <dd className="text-[var(--foreground)]">{expiresAt}</dd>
+                    </div>
+                  </dl>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-700">
-                  <Warehouse className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
-                      Warehouse
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">
-                      {reservation.warehouse.name}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {reservation.warehouse.code} · {reservation.warehouse.city}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
-                      Hold details
-                    </p>
-                    <dl className="mt-2 grid gap-2 text-sm text-slate-700">
-                      <div className="flex justify-between gap-4">
-                        <dt>Reservation ID</dt>
-                        <dd className="font-mono text-xs text-slate-500">
-                          {reservation.id}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-4">
-                        <dt>Quantity</dt>
-                        <dd className="font-semibold text-slate-950">
-                          {reservation.quantity}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-4">
-                        <dt>Expires at</dt>
-                        <dd>{expiresAt}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
+            <aside className="surface-card rounded-[32px] border border-app-strong bg-[linear-gradient(180deg,var(--surface-strong)_0%,color-mix(in_srgb,var(--surface-strong)_86%,black_14%)_100%)] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.22)]">
+              <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-[0.16em] text-app-soft">
+                <Clock3 className="h-4 w-4 text-[var(--accent-strong)]" aria-hidden="true" />
+                Hold status
               </div>
-            </div>
+
+              {pending ? (
+                <>
+                  <div className="mt-5 rounded-[28px] border border-[color-mix(in_srgb,var(--accent)_34%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.03))] p-6">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-app-soft">
+                      Time remaining
+                    </p>
+                    <p className="mt-3 font-mono text-5xl font-semibold tracking-tight text-[var(--foreground)]">
+                      {countdown}
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-app-muted">
+                      Confirming now converts the held units into a completed
+                      stock decrement. If the timer reaches zero first, the hold
+                      will be released automatically.
+                    </p>
+                  </div>
+                </>
+              ) : null}
+
+              {reservation.status === "confirmed" ? (
+                <>
+                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                    <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
+                    Reservation confirmed
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-app-muted">
+                    Inventory has been committed for checkout completion. This
+                    hold is final and no longer actionable from this screen.
+                  </p>
+                  {confirmedAt ? (
+                    <p className="mt-4 inline-flex items-center gap-2 text-sm text-app-soft">
+                      <Check className="h-4 w-4" aria-hidden="true" />
+                      Confirmed at {confirmedAt}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+
+              {reservation.status === "released" ? (
+                <>
+                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-300">
+                    <XCircle className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
+                    Reservation released
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-app-muted">
+                    This hold is no longer active. Reserved units have been
+                    returned to the warehouse inventory pool.
+                  </p>
+                  {releasedAt ? (
+                    <p className="mt-4 inline-flex items-center gap-2 text-sm text-app-soft">
+                      <Layers3 className="h-4 w-4" aria-hidden="true" />
+                      Released at {releasedAt}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+
+              {actionError ? (
+                <div className="mt-6 rounded-[24px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                  {actionError}
+                </div>
+              ) : null}
+
+              {expiredOnRead ? (
+                <div className="mt-6 rounded-[24px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+                  This reservation expired and was released automatically when the
+                  checkout hold page was opened.
+                </div>
+              ) : null}
+
+              {!pending && !actionError ? (
+                <div className="mt-6 rounded-[24px] border border-app-soft bg-app-veil px-4 py-3 text-sm text-app-muted">
+                  This hold is no longer active. Return to inventory to create a
+                  new reservation.
+                </div>
+              ) : null}
+
+              <div className="mt-8 grid gap-3">
+                <Button
+                  onClick={() => void runAction("confirm")}
+                  disabled={disableActions}
+                  className="w-full"
+                  size="lg"
+                >
+                  {activeAction === "confirm" ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  Confirm purchase
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void runAction("release")}
+                  disabled={disableActions}
+                  className="w-full"
+                  size="lg"
+                >
+                  {activeAction === "release" ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <XCircle className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  Cancel reservation
+                </Button>
+              </div>
+
+              <div className="mt-6">
+                <Button asChild variant="ghost" className="w-full">
+                  <Link href="/">
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    Return to inventory
+                  </Link>
+                </Button>
+              </div>
+            </aside>
           </div>
-
-          <aside className="rounded-md border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
-            <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-[0.16em] text-slate-300">
-              <Clock3 className="h-4 w-4" aria-hidden="true" />
-              Hold status
-            </div>
-
-            {pending ? (
-              <>
-                <p className="mt-5 font-mono text-5xl font-semibold tracking-tight">
-                  {countdown}
-                </p>
-                <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-                  Time remaining
-                </p>
-                <p className="mt-3 text-sm leading-6 text-slate-300">
-                  This reservation remains active until the timer reaches zero.
-                  Confirming now converts the held units into a completed stock
-                  decrement.
-                </p>
-              </>
-            ) : null}
-
-            {reservation.status === "confirmed" ? (
-              <>
-                <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
-                  <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
-                </div>
-                <p className="mt-4 text-2xl font-semibold">Reservation confirmed</p>
-                <p className="mt-3 text-sm leading-6 text-slate-300">
-                  Inventory has been committed for checkout completion. The hold
-                  is final and no longer actionable from this screen.
-                </p>
-                {confirmedAt ? (
-                  <p className="mt-4 text-sm text-slate-400">
-                    Confirmed at {confirmedAt}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-
-            {reservation.status === "released" ? (
-              <>
-                <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-300">
-                  <XCircle className="h-6 w-6" aria-hidden="true" />
-                </div>
-                <p className="mt-4 text-2xl font-semibold">Reservation released</p>
-                <p className="mt-3 text-sm leading-6 text-slate-300">
-                  This hold is no longer active. The reserved units are back in
-                  the warehouse inventory pool.
-                </p>
-                {releasedAt ? (
-                  <p className="mt-4 text-sm text-slate-400">
-                    Released at {releasedAt}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-
-            {actionError ? (
-              <div className="mt-6 rounded-md border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-                {actionError}
-              </div>
-            ) : null}
-
-            {expiredOnRead ? (
-              <div className="mt-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                This reservation expired and was released automatically when the
-                checkout hold page was opened.
-              </div>
-            ) : null}
-
-            {!pending && !actionError ? (
-              <div className="mt-6 rounded-md border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
-                This hold is no longer active. Return to inventory to create a
-                new reservation.
-              </div>
-            ) : null}
-
-            <div className="mt-8 grid gap-3">
-              <Button
-                onClick={() => void runAction("confirm")}
-                disabled={disableActions}
-                className="bg-white text-slate-950 hover:bg-slate-100"
-              >
-                {activeAction === "confirm" ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                )}
-                Confirm purchase
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => void runAction("release")}
-                disabled={disableActions}
-                className="border-slate-700 bg-transparent text-white hover:bg-slate-900"
-              >
-                {activeAction === "release" ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <XCircle className="h-4 w-4" aria-hidden="true" />
-                )}
-                Cancel reservation
-              </Button>
-            </div>
-
-            <div className="mt-6">
-              <Button
-                asChild
-                variant="outline"
-                className="border-slate-700 bg-transparent text-white hover:bg-slate-900"
-              >
-                <Link href="/">
-                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                  Return to inventory
-                </Link>
-              </Button>
-            </div>
-          </aside>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </main>
   );
 }
 

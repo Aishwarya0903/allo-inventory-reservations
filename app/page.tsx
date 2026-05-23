@@ -1,5 +1,9 @@
 import { InventoryBrowser } from "@/components/inventory/inventory-browser";
 
 export default function Home() {
-  return <InventoryBrowser />;
+  const reservationTtlMinutes = Number(
+    process.env.RESERVATION_TTL_MINUTES ?? 10,
+  );
+
+  return <InventoryBrowser reservationTtlMinutes={reservationTtlMinutes} />;
 }
