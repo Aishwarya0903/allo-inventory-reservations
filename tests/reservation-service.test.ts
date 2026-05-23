@@ -8,6 +8,7 @@ import {
 import {
   cleanupExpiredReservations,
   confirmReservation,
+  getReservationDetail,
   releaseReservation,
   reserveInventory,
   type ReservationServiceDb,
@@ -33,6 +34,7 @@ function createMockDb(txOverrides: Record<string, unknown> = {}) {
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       update: vi.fn(),
     },
     stockLevel: {
@@ -127,6 +129,73 @@ describe("reservation service", () => {
     });
 
     expect(tx.reservation.create).not.toHaveBeenCalled();
+  });
+
+  it("releases an expired pending reservation when reading reservation detail", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T10:11:00.000Z"));
+
+    const expiredReservation = {
+      ...baseReservation,
+      product: {
+        id: "product_1",
+        sku: "SKU-001",
+        name: "Daily Recovery Tee",
+        description: "Soft cotton tee",
+        imageUrl: null,
+        createdAt: new Date("2026-01-01T10:00:00.000Z"),
+        updatedAt: new Date("2026-01-01T10:00:00.000Z"),
+      },
+      warehouse: {
+        id: "warehouse_1",
+        code: "BLR",
+        name: "Bengaluru FC",
+        city: "Bengaluru",
+        createdAt: new Date("2026-01-01T10:00:00.000Z"),
+        updatedAt: new Date("2026-01-01T10:00:00.000Z"),
+      },
+      expiresAt: new Date("2026-01-01T10:10:00.000Z"),
+    };
+    const releasedReservation = {
+      ...expiredReservation,
+      status: ReservationStatus.released,
+      releasedAt: new Date("2026-01-01T10:11:00.000Z"),
+    };
+    const { db, tx } = createMockDb();
+    tx.reservation.findUnique
+      .mockResolvedValueOnce(expiredReservation)
+      .mockResolvedValueOnce(releasedReservation);
+    tx.stockLevel.updateMany.mockResolvedValue({ count: 1 });
+    tx.reservation.update.mockResolvedValue(releasedReservation);
+
+    const result = await getReservationDetail(
+      { reservationId: "reservation_1" },
+      db,
+    );
+
+    expect(result).toEqual({
+      reservation: releasedReservation,
+      expiredOnRead: true,
+    });
+    expect(tx.stockLevel.updateMany).toHaveBeenCalledWith({
+      where: {
+        productId: "product_1",
+        warehouseId: "warehouse_1",
+        reservedUnits: { gte: 1 },
+      },
+      data: {
+        reservedUnits: { decrement: 1 },
+      },
+    });
+    expect(tx.reservation.update).toHaveBeenCalledWith({
+      where: { id: "reservation_1" },
+      data: {
+        status: ReservationStatus.released,
+        releasedAt: new Date("2026-01-01T10:11:00.000Z"),
+      },
+    });
+
+    vi.useRealTimers();
   });
 
   it("confirms a pending reservation by decrementing total and reserved units", async () => {

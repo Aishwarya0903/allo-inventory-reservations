@@ -8,9 +8,7 @@ The goal is to avoid overselling while payment is in progress without making aba
 
 ## Assignment Focus
 
-The project currently includes the application scaffold plus the first database foundation: Prisma models for products, warehouses, stock levels, and reservations.
-
-The reservation endpoint is intentionally not implemented yet.
+The project now includes the inventory listing, reservation creation flow, and the checkout hold screen used to confirm or release a reservation before payment completes.
 
 ## Tech Stack
 
@@ -112,6 +110,7 @@ The Next.js route handlers are intentionally thin and live under `app/api/`.
 
 - `GET /api/products` runs lazy cleanup for expired reservations before reading products, then returns products with warehouse-level `totalUnits`, `reservedUnits`, and computed `availableUnits`.
 - `GET /api/warehouses` returns the warehouse list.
+- `GET /api/reservations/[id]` returns a reservation with product and warehouse details. If a pending reservation has already expired, the read path releases it first and returns the released state with an `expiredOnRead` flag.
 - `POST /api/reservations` validates the JSON body with Zod and creates a pending reservation.
 - `POST /api/reservations/[id]/confirm` confirms a reservation or returns an expiry/state error.
 - `POST /api/reservations/[id]/release` releases a reservation or returns a state error.
@@ -133,7 +132,10 @@ The home page now acts as the reservation entry point.
 - Users can choose a quantity and attempt a reservation directly from the row.
 - A `409 Conflict` response is shown as a visible "Not enough stock available." message.
 - Successful reservations navigate to `/reservations/[id]`.
-- The reservation detail page is a placeholder for now; confirm and release UI is the next step.
+- The reservation detail page fetches the active hold, shows the product and warehouse context, and keeps a live countdown running while the reservation is pending.
+- Confirming the hold calls `POST /api/reservations/[id]/confirm` and updates the page to the confirmed state without a manual refresh.
+- Cancelling the hold calls `POST /api/reservations/[id]/release` and updates the page to the released state without a manual refresh.
+- If the hold expires before confirmation, the UI shows a visible expired message and reflects the released state after the API syncs.
 
 The product listing refreshes inventory after a failed stock conflict so the user sees the latest available units after the backend rejects the request.
 
@@ -154,6 +156,8 @@ That single database statement is the concurrency boundary. If two checkout atte
 The important behavior is that when two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request succeeds and the other receives a conflict response.
 
 The unit tests assert the guarded update shape and service state transitions. End-to-end concurrency still requires a real Postgres test database. A skipped integration harness in `tests/reservation-concurrency.integration.test.ts` runs the two-simultaneous-reservations case when `TEST_DATABASE_URL` is present and the test database has the Prisma schema applied.
+
+The checkout UI tests cover countdown formatting, expired-state detection, and the error messages shown for `404`, `409`, and `410` reservation responses. They do not try to simulate browser-level timing or database concurrency in-memory.
 
 ## Expiry Strategy
 
@@ -176,11 +180,12 @@ Complete:
 - Unit coverage for guarded reserve behavior, confirm/release transitions, and expiry cleanup
 - Skipped Postgres integration harness for the last-unit concurrency case
 - Product listing UI backed by live API routes
-- Reserve flow from warehouse rows into a placeholder reservation detail page
+- Reserve flow from warehouse rows into a real reservation detail checkout screen
+- Reservation detail API read route with expiry-aware read behavior
+- Confirm and release actions from the checkout hold page
 - Initial Zod schema for future reservation requests
 
 Not complete yet:
 
-- Reservation confirmation UI
-- Reservation release UI
 - Real Postgres integration run in CI or against hosted test infrastructure
+- Payment orchestration beyond reservation confirmation

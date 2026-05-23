@@ -14,6 +14,14 @@ import { getReservationTtlMinutes } from "@/lib/domain/reservations";
 
 export type ReservationServiceDb = Pick<PrismaClient, "$transaction">;
 type TransactionClient = Prisma.TransactionClient;
+const reservationDetailInclude = Prisma.validator<Prisma.ReservationInclude>()({
+  product: true,
+  warehouse: true,
+});
+
+export type ReservationDetail = Prisma.ReservationGetPayload<{
+  include: typeof reservationDetailInclude;
+}>;
 
 type ReserveInventoryInput = {
   productId: string;
@@ -27,6 +35,11 @@ type ReservationByIdInput = {
 
 type CleanupExpiredReservationsResult = {
   releasedCount: number;
+};
+
+type ReservationDetailResult = {
+  reservation: ReservationDetail;
+  expiredOnRead: boolean;
 };
 
 type ConfirmReservationResult =
@@ -61,6 +74,32 @@ export async function reserveInventory(
         expiresAt: getReservationExpiry(new Date()),
       },
     });
+  });
+}
+
+export async function getReservationDetail(
+  input: ReservationByIdInput,
+  db: ReservationServiceDb = prisma,
+): Promise<ReservationDetailResult> {
+  return db.$transaction(async (tx) => {
+    const now = new Date();
+    const reservation = await findReservationDetailOrThrow(tx, input.reservationId);
+
+    if (
+      reservation.status === ReservationStatus.pending &&
+      reservation.expiresAt <= now
+    ) {
+      await releasePendingReservation(tx, reservation, now);
+      return {
+        reservation: await findReservationDetailOrThrow(tx, input.reservationId),
+        expiredOnRead: true,
+      };
+    }
+
+    return {
+      reservation,
+      expiredOnRead: false,
+    };
   });
 }
 
@@ -246,6 +285,25 @@ async function findReservationOrThrow(
 ) {
   const reservation = await tx.reservation.findUnique({
     where: { id: reservationId },
+  });
+
+  if (!reservation) {
+    throw new ReservationDomainError(
+      reservationErrorCodes.RESERVATION_NOT_FOUND,
+      "Reservation was not found.",
+    );
+  }
+
+  return reservation;
+}
+
+async function findReservationDetailOrThrow(
+  tx: TransactionClient,
+  reservationId: string,
+) {
+  const reservation = await tx.reservation.findUnique({
+    where: { id: reservationId },
+    include: reservationDetailInclude,
   });
 
   if (!reservation) {
