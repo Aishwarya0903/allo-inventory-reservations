@@ -95,13 +95,34 @@ When a user proceeds to checkout, the future API will validate the request, calc
 
 If payment succeeds, the reservation will be confirmed and stock will be permanently decremented. If payment fails or the hold expires, the reservation will be released.
 
+## Reservation Service
+
+The reservation service lives in `lib/domain/reservation-service.ts`. It is intentionally separate from route handlers so the critical stock behavior can be tested directly before adding HTTP concerns.
+
+Current service behavior:
+
+- `reserveInventory` validates quantity, runs a transaction, atomically increments `reservedUnits`, and creates a pending reservation with an expiry timestamp.
+- `confirmReservation` handles idempotent confirmed reservations, rejects released reservations, releases expired pending reservations, and confirms active pending reservations by decrementing both `totalUnits` and `reservedUnits`.
+- `releaseReservation` releases pending reservations by decrementing only `reservedUnits`, returns already released reservations idempotently, and rejects confirmed reservations.
+- `cleanupExpiredReservations` finds expired pending reservations and releases them without allowing `reservedUnits` to go negative.
+
 ## Concurrency Strategy
 
-The core reservation endpoint will be designed around Postgres transactions and atomic conditional stock updates. Reservation correctness belongs in the service/API layer, where the write can check availability and increment `reservedUnits` as one guarded operation.
+The core reservation write uses a Postgres guarded update inside a Prisma transaction:
+
+```sql
+UPDATE "StockLevel"
+SET "reservedUnits" = "reservedUnits" + quantity
+WHERE "productId" = productId
+  AND "warehouseId" = warehouseId
+  AND ("totalUnits" - "reservedUnits") >= quantity
+```
+
+That single database statement is the concurrency boundary. If two checkout attempts race for the last available unit, Postgres can only let one statement update the row once availability no longer satisfies the condition. The losing request gets a `NOT_ENOUGH_STOCK` domain error, which the future API route can map to HTTP `409`.
 
 The important behavior is that when two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request succeeds and the other receives a conflict response.
 
-This is not implemented yet, but the project is structured so reservation business logic can live separately from route handlers and be tested directly.
+The unit tests assert the guarded update shape and service state transitions. End-to-end concurrency still requires a real Postgres test database. A skipped integration harness in `tests/reservation-concurrency.integration.test.ts` runs the two-simultaneous-reservations case when `TEST_DATABASE_URL` is present and the test database has the Prisma schema applied.
 
 ## Expiry Strategy
 
@@ -120,6 +141,9 @@ Complete:
 - Prisma seed file with demo retail inventory across multiple warehouses
 - Reservation status constants and TTL parsing helper
 - Stock availability and invariant helpers
+- Reservation service with typed domain errors
+- Unit coverage for guarded reserve behavior, confirm/release transitions, and expiry cleanup
+- Skipped Postgres integration harness for the last-unit concurrency case
 - Initial Zod schema for future reservation requests
 - Simple domain-specific landing page
 
@@ -127,5 +151,4 @@ Not complete yet:
 
 - Reservation API routes
 - Payment confirmation or release endpoints
-- Concurrency-safe reservation transaction
-- Expiry cleanup implementation
+- Real Postgres integration run in CI or against hosted test infrastructure
