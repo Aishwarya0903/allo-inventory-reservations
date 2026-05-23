@@ -106,6 +106,24 @@ Current service behavior:
 - `releaseReservation` releases pending reservations by decrementing only `reservedUnits`, returns already released reservations idempotently, and rejects confirmed reservations.
 - `cleanupExpiredReservations` finds expired pending reservations and releases them without allowing `reservedUnits` to go negative.
 
+## API Routes
+
+The Next.js route handlers are intentionally thin and live under `app/api/`.
+
+- `GET /api/products` runs lazy cleanup for expired reservations before reading products, then returns products with warehouse-level `totalUnits`, `reservedUnits`, and computed `availableUnits`.
+- `GET /api/warehouses` returns the warehouse list.
+- `POST /api/reservations` validates the JSON body with Zod and creates a pending reservation.
+- `POST /api/reservations/[id]/confirm` confirms a reservation or returns an expiry/state error.
+- `POST /api/reservations/[id]/release` releases a reservation or returns a state error.
+
+Error behavior is explicit:
+
+- `NOT_ENOUGH_STOCK` maps to HTTP `409 Conflict`
+- invalid reservation state errors also map to HTTP `409 Conflict`
+- `RESERVATION_EXPIRED` maps to HTTP `410 Gone`
+- `RESERVATION_NOT_FOUND` maps to HTTP `404 Not Found`
+- invalid JSON or invalid request bodies map to HTTP `400 Bad Request`
+
 ## Concurrency Strategy
 
 The core reservation write uses a Postgres guarded update inside a Prisma transaction:

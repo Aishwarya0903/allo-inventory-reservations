@@ -6,6 +6,13 @@ export const createReservationRequestSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
+export const reservationRouteParamsSchema = z.object({
+  id: z.string().min(1),
+});
+
 export type CreateReservationRequest = z.infer<
   typeof createReservationRequestSchema
+>;
+export type ReservationRouteParams = z.infer<
+  typeof reservationRouteParamsSchema
 >;
