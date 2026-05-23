@@ -124,6 +124,19 @@ Error behavior is explicit:
 - `RESERVATION_NOT_FOUND` maps to HTTP `404 Not Found`
 - invalid JSON or invalid request bodies map to HTTP `400 Bad Request`
 
+## Product Listing Flow
+
+The home page now acts as the reservation entry point.
+
+- It fetches `GET /api/products` and shows live stock by warehouse.
+- Each warehouse row exposes `totalUnits`, `reservedUnits`, and `availableUnits`.
+- Users can choose a quantity and attempt a reservation directly from the row.
+- A `409 Conflict` response is shown as a visible "Not enough stock available." message.
+- Successful reservations navigate to `/reservations/[id]`.
+- The reservation detail page is a placeholder for now; confirm and release UI is the next step.
+
+The product listing refreshes inventory after a failed stock conflict so the user sees the latest available units after the backend rejects the request.
+
 ## Concurrency Strategy
 
 The core reservation write uses a Postgres guarded update inside a Prisma transaction:
@@ -162,11 +175,12 @@ Complete:
 - Reservation service with typed domain errors
 - Unit coverage for guarded reserve behavior, confirm/release transitions, and expiry cleanup
 - Skipped Postgres integration harness for the last-unit concurrency case
+- Product listing UI backed by live API routes
+- Reserve flow from warehouse rows into a placeholder reservation detail page
 - Initial Zod schema for future reservation requests
-- Simple domain-specific landing page
 
 Not complete yet:
 
-- Reservation API routes
-- Payment confirmation or release endpoints
+- Reservation confirmation UI
+- Reservation release UI
 - Real Postgres integration run in CI or against hosted test infrastructure
