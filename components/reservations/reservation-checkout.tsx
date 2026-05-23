@@ -17,39 +17,9 @@ import {
   formatReservationCountdown,
   getReservationActionErrorMessage,
   isPendingReservationExpired,
+  parseReservationDetailResponse,
+  type ReservationCheckoutDetail,
 } from "@/lib/ui/reservation-checkout";
-
-type ReservationApiResponse = {
-  reservation: ReservationDetail;
-  expiredOnRead: boolean;
-};
-
-type ReservationMutationResponse = {
-  reservation: ReservationDetail;
-};
-
-type ReservationDetail = {
-  id: string;
-  quantity: number;
-  status: "pending" | "confirmed" | "released";
-  expiresAt: string;
-  confirmedAt: string | null;
-  releasedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  product: {
-    id: string;
-    sku: string;
-    name: string;
-    description: string;
-  };
-  warehouse: {
-    id: string;
-    code: string;
-    name: string;
-    city: string;
-  };
-};
 
 type ApiError = {
   error: {
@@ -75,7 +45,7 @@ function formatTimestamp(timestamp: string | null) {
   }).format(new Date(timestamp));
 }
 
-function getStatusTone(status: ReservationDetail["status"]) {
+function getStatusTone(status: ReservationCheckoutDetail["status"]) {
   switch (status) {
     case "confirmed":
       return "border-emerald-200 bg-emerald-50 text-emerald-800";
@@ -87,7 +57,7 @@ function getStatusTone(status: ReservationDetail["status"]) {
   }
 }
 
-function getStatusLabel(status: ReservationDetail["status"]) {
+function getStatusLabel(status: ReservationCheckoutDetail["status"]) {
   switch (status) {
     case "confirmed":
       return "Confirmed";
@@ -102,7 +72,8 @@ function getStatusLabel(status: ReservationDetail["status"]) {
 export function ReservationCheckout({
   reservationId,
 }: ReservationCheckoutProps) {
-  const [reservation, setReservation] = useState<ReservationDetail | null>(null);
+  const [reservation, setReservation] =
+    useState<ReservationCheckoutDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -134,9 +105,17 @@ export function ReservationCheckout({
           return;
         }
 
-        const data = (await response.json()) as ReservationApiResponse;
-        setReservation(data.reservation);
-        setExpiredOnRead(data.expiredOnRead);
+        const payload = parseReservationDetailResponse(await response.json());
+
+        if (!payload) {
+          setPageError("Reservation details are unavailable for this hold.");
+          setReservation(null);
+          setExpiredOnRead(false);
+          return;
+        }
+
+        setReservation(payload.reservation);
+        setExpiredOnRead(payload.expiredOnRead);
         didRefreshExpiredReservation.current = false;
       } catch {
         setPageError(getReservationActionErrorMessage("load", null));
@@ -205,9 +184,7 @@ export function ReservationCheckout({
         return;
       }
 
-      const data = (await response.json()) as ReservationMutationResponse;
-      setReservation(data.reservation);
-      setExpiredOnRead(false);
+      await loadReservation({ background: true });
     } catch {
       setActionError(getReservationActionErrorMessage(action, null));
     } finally {

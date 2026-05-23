@@ -4,6 +4,7 @@ import {
   formatReservationCountdown,
   getReservationActionErrorMessage,
   isPendingReservationExpired,
+  parseReservationDetailResponse,
 } from "@/lib/ui/reservation-checkout";
 
 describe("reservation checkout helpers", () => {
@@ -61,5 +62,88 @@ describe("reservation checkout helpers", () => {
         },
       }),
     ).toBe("Confirmed reservations cannot be released.");
+  });
+
+  it("parses the reservation detail API payload when product and warehouse are present", () => {
+    expect(
+      parseReservationDetailResponse({
+        reservation: {
+          id: "res_123",
+          quantity: 1,
+          status: "pending",
+          expiresAt: "2026-01-01T10:10:00.000Z",
+          confirmedAt: null,
+          releasedAt: null,
+          createdAt: "2026-01-01T10:00:00.000Z",
+          updatedAt: "2026-01-01T10:00:00.000Z",
+          product: {
+            id: "prod_123",
+            sku: "ALLO-ELECTROLYTE-CITRUS-30",
+            name: "Citrus Electrolyte Sticks",
+            description: "Hydration sticks",
+          },
+          warehouse: {
+            id: "wh_123",
+            code: "BLR-01",
+            name: "Bengaluru South Fulfillment",
+            city: "Bengaluru",
+          },
+        },
+        expiredOnRead: false,
+      }),
+    ).toEqual({
+      reservation: {
+        id: "res_123",
+        quantity: 1,
+        status: "pending",
+        expiresAt: "2026-01-01T10:10:00.000Z",
+        confirmedAt: null,
+        releasedAt: null,
+        createdAt: "2026-01-01T10:00:00.000Z",
+        updatedAt: "2026-01-01T10:00:00.000Z",
+        product: {
+          id: "prod_123",
+          sku: "ALLO-ELECTROLYTE-CITRUS-30",
+          name: "Citrus Electrolyte Sticks",
+          description: "Hydration sticks",
+        },
+        warehouse: {
+          id: "wh_123",
+          code: "BLR-01",
+          name: "Bengaluru South Fulfillment",
+          city: "Bengaluru",
+        },
+      },
+      expiredOnRead: false,
+    });
+  });
+
+  it("rejects incomplete reservation detail payloads instead of letting the UI crash", () => {
+    expect(
+      parseReservationDetailResponse({
+        reservation: {
+          id: "res_123",
+          quantity: 1,
+          status: "pending",
+          expiresAt: "2026-01-01T10:10:00.000Z",
+          confirmedAt: null,
+          releasedAt: null,
+          createdAt: "2026-01-01T10:00:00.000Z",
+          updatedAt: "2026-01-01T10:00:00.000Z",
+          product: {
+            id: "prod_123",
+            sku: "ALLO-ELECTROLYTE-CITRUS-30",
+            description: "Hydration sticks",
+          },
+          warehouse: {
+            id: "wh_123",
+            code: "BLR-01",
+            name: "Bengaluru South Fulfillment",
+            city: "Bengaluru",
+          },
+        },
+        expiredOnRead: false,
+      }),
+    ).toBeNull();
   });
 });

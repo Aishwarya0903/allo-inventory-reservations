@@ -5,10 +5,65 @@ type ReservationApiError = {
   message: string;
 };
 
+type ReservationProduct = {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+};
+
+type ReservationWarehouse = {
+  id: string;
+  code: string;
+  name: string;
+  city: string;
+};
+
+export type ReservationCheckoutDetail = {
+  id: string;
+  quantity: number;
+  status: ReservationStatus;
+  expiresAt: string;
+  confirmedAt: string | null;
+  releasedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  product: ReservationProduct;
+  warehouse: ReservationWarehouse;
+};
+
+export type ReservationCheckoutApiResponse = {
+  reservation: ReservationCheckoutDetail;
+  expiredOnRead: boolean;
+};
+
 type ReservationActionErrorInput = {
   status: number;
   error?: ReservationApiError;
 };
+
+export function parseReservationDetailResponse(
+  value: unknown,
+): ReservationCheckoutApiResponse | null {
+  if (!isRecord(value) || !("reservation" in value) || !("expiredOnRead" in value)) {
+    return null;
+  }
+
+  if (typeof value.expiredOnRead !== "boolean") {
+    return null;
+  }
+
+  const reservation = value.reservation;
+
+  if (!isReservationCheckoutDetail(reservation)) {
+    return null;
+  }
+
+  return {
+    reservation,
+    expiredOnRead: value.expiredOnRead,
+  };
+}
 
 export function formatReservationCountdown(
   expiresAt: string,
@@ -70,4 +125,51 @@ export function getReservationActionErrorMessage(
     default:
       return "Unable to load this reservation right now.";
   }
+}
+
+function isReservationCheckoutDetail(
+  value: unknown,
+): value is ReservationCheckoutDetail {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.quantity === "number" &&
+    (value.status === "pending" ||
+      value.status === "confirmed" ||
+      value.status === "released") &&
+    typeof value.expiresAt === "string" &&
+    (typeof value.confirmedAt === "string" || value.confirmedAt === null) &&
+    (typeof value.releasedAt === "string" || value.releasedAt === null) &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string" &&
+    isReservationProduct(value.product) &&
+    isReservationWarehouse(value.warehouse)
+  );
+}
+
+function isReservationProduct(value: unknown): value is ReservationProduct {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.sku === "string" &&
+    typeof value.name === "string" &&
+    typeof value.description === "string"
+  );
+}
+
+function isReservationWarehouse(value: unknown): value is ReservationWarehouse {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.code === "string" &&
+    typeof value.name === "string" &&
+    typeof value.city === "string"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
