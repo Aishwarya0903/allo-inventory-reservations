@@ -108,12 +108,14 @@ const stockBySkuAndWarehouse = [
 ];
 
 const demoProductSkus = products.map((product) => product.sku);
+const demoProductSkuPrefixes = ["ALLO-EXP-", "ALLO-RACE-"];
 const demoWarehouseCodes = [
   "AUS-01",
   "PHX-01",
   "RDU-01",
   ...warehouses.map((warehouse) => warehouse.code),
 ];
+const demoWarehouseCodePrefixes = ["EX", "RACE"];
 
 async function main() {
   const productRecords = new Map<string, { id: string }>();
@@ -122,17 +124,35 @@ async function main() {
   const [demoProducts, demoWarehouses] = await Promise.all([
     prisma.product.findMany({
       where: {
-        sku: {
-          in: demoProductSkus,
-        },
+        OR: [
+          {
+            sku: {
+              in: demoProductSkus,
+            },
+          },
+          ...demoProductSkuPrefixes.map((prefix) => ({
+            sku: {
+              startsWith: prefix,
+            },
+          })),
+        ],
       },
       select: { id: true },
     }),
     prisma.warehouse.findMany({
       where: {
-        code: {
-          in: demoWarehouseCodes,
-        },
+        OR: [
+          {
+            code: {
+              in: demoWarehouseCodes,
+            },
+          },
+          ...demoWarehouseCodePrefixes.map((prefix) => ({
+            code: {
+              startsWith: prefix,
+            },
+          })),
+        ],
       },
       select: { id: true },
     }),
@@ -167,16 +187,34 @@ async function main() {
     }),
     prisma.product.deleteMany({
       where: {
-        sku: {
-          in: demoProductSkus,
-        },
+        OR: [
+          {
+            sku: {
+              in: demoProductSkus,
+            },
+          },
+          ...demoProductSkuPrefixes.map((prefix) => ({
+            sku: {
+              startsWith: prefix,
+            },
+          })),
+        ],
       },
     }),
     prisma.warehouse.deleteMany({
       where: {
-        code: {
-          in: demoWarehouseCodes,
-        },
+        OR: [
+          {
+            code: {
+              in: demoWarehouseCodes,
+            },
+          },
+          ...demoWarehouseCodePrefixes.map((prefix) => ({
+            code: {
+              startsWith: prefix,
+            },
+          })),
+        ],
       },
     }),
   ]);
