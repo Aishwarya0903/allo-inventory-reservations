@@ -155,20 +155,24 @@ The repository includes [vercel.json](/Users/yeswanth/Downloads/Projects/allo-in
 
 - `GET /api/cron/release-expired`
 
-The schedule is currently every 10 minutes:
+For Vercel Hobby, cron jobs run daily. The checked-in schedule uses a once-daily sweep at `03:00 UTC` so the project deploys cleanly on the Hobby plan:
 
 ```json
 {
   "crons": [
     {
       "path": "/api/cron/release-expired",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
 ```
 
 Vercel will send an HTTP `GET` request to that route. When `CRON_SECRET` is configured on the project, Vercel sends it as a bearer token in the `Authorization` header, and the route rejects requests that do not match.[^vercel-cron]
+
+The lower Hobby cron frequency does not leave the app relying on a daily cleanup alone. Expired holds are still released lazily during product reads and reservation-detail reads, so stale pending reservations do not stay visible until the cron sweep runs.
+
+If you deploy this same project on Vercel Pro, you can increase the cron frequency to run the same endpoint more often without changing reservation business logic.
 
 ### Deployment checklist
 
@@ -342,13 +346,15 @@ Example:
   "crons": [
     {
       "path": "/api/cron/release-expired",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
 ```
 
 Vercel will invoke the configured path with an HTTP `GET` request, and when `CRON_SECRET` is configured on the project it will send the bearer token in the `Authorization` header for the route to verify.[^vercel-cron]
+
+On Vercel Hobby, that cron should stay daily. The app still performs lazy cleanup on `GET /api/products` and `GET /api/reservations/[id]`, so expired holds are released during normal reads even between scheduled sweeps. On Vercel Pro, the same endpoint can be scheduled more frequently if you want tighter background cleanup.
 
 The scaffold includes `RESERVATION_TTL_MINUTES`, `CRON_SECRET`, and Upstash placeholders for future deployment-friendly expiry support.
 
