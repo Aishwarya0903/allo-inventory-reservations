@@ -55,26 +55,37 @@ export async function reserveInventory(
 ) {
   assertPositiveIntegerQuantity(input.quantity);
 
-  return db.$transaction(async (tx) => {
-    const reservedRows = await reserveStockUnits(tx, input);
+  try {
+    return await db.$transaction(async (tx) => {
+      const reservedRows = await reserveStockUnits(tx, input);
 
-    if (reservedRows === 0) {
+      if (reservedRows === 0) {
+        throw new ReservationDomainError(
+          reservationErrorCodes.NOT_ENOUGH_STOCK,
+          "Not enough stock is available for this reservation.",
+        );
+      }
+
+      return tx.reservation.create({
+        data: {
+          productId: input.productId,
+          warehouseId: input.warehouseId,
+          quantity: input.quantity,
+          status: ReservationStatus.pending,
+          expiresAt: getReservationExpiry(new Date()),
+        },
+      });
+    });
+  } catch (error) {
+    if (isReserveWriteConflictError(error)) {
       throw new ReservationDomainError(
         reservationErrorCodes.NOT_ENOUGH_STOCK,
         "Not enough stock is available for this reservation.",
       );
     }
 
-    return tx.reservation.create({
-      data: {
-        productId: input.productId,
-        warehouseId: input.warehouseId,
-        quantity: input.quantity,
-        status: ReservationStatus.pending,
-        expiresAt: getReservationExpiry(new Date()),
-      },
-    });
-  });
+    throw error;
+  }
 }
 
 export async function getReservationDetail(
@@ -327,4 +338,15 @@ function assertPositiveIntegerQuantity(quantity: number) {
 
 function getReservationExpiry(now: Date) {
   return new Date(now.getTime() + getReservationTtlMinutes() * MINUTE_IN_MS);
+}
+
+function isReserveWriteConflictError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    "code" in error &&
+    error.name === "PrismaClientKnownRequestError" &&
+    error.code === "P2034"
+  );
 }

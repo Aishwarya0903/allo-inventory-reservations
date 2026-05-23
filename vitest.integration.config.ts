@@ -10,7 +10,7 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
-    include: ["tests/**/*.test.ts"],
-    exclude: [...configDefaults.exclude, "tests/**/*.integration.test.ts"],
+    include: ["tests/**/*.integration.test.ts"],
+    exclude: configDefaults.exclude,
   },
 });

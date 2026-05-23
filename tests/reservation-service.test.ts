@@ -131,6 +131,28 @@ describe("reservation service", () => {
     expect(tx.reservation.create).not.toHaveBeenCalled();
   });
 
+  it("maps a Prisma write-conflict during reserve to not enough stock", async () => {
+    const { db } = createMockDb();
+    db.$transaction = vi.fn().mockRejectedValue({
+      name: "PrismaClientKnownRequestError",
+      code: "P2034",
+      message: "Transaction failed due to a write conflict or a deadlock.",
+    });
+
+    await expect(
+      reserveInventory(
+        {
+          productId: "product_1",
+          warehouseId: "warehouse_1",
+          quantity: 1,
+        },
+        db,
+      ),
+    ).rejects.toMatchObject({
+      code: reservationErrorCodes.NOT_ENOUGH_STOCK,
+    });
+  });
+
   it("releases an expired pending reservation when reading reservation detail", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T10:11:00.000Z"));
