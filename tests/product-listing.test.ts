@@ -12,7 +12,9 @@ describe("product listing helpers", () => {
           message: "Not enough stock is available for this reservation.",
         },
       }),
-    ).toBe("Not enough stock available.");
+    ).toBe(
+      "Not enough stock available in this warehouse. Inventory has been refreshed.",
+    );
   });
 
   it("falls back to the API message for other known failures", () => {

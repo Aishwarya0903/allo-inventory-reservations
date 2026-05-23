@@ -1,6 +1,15 @@
 "use client";
 
-import { CheckCircle2, Clock3, RefreshCw, Store, Warehouse, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  RefreshCw,
+  Store,
+  Warehouse,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -232,6 +241,14 @@ export function ReservationCheckout({
           The reservation detail could not be loaded from the API. If the hold
           was just created, refresh the product listing and try again.
         </p>
+        <div className="mt-6">
+          <Button asChild variant="outline">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to inventory
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -253,6 +270,14 @@ export function ReservationCheckout({
         <div className="border-b border-slate-200 px-6 py-6 sm:px-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
+              <div className="mb-4">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/">
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    Back to inventory
+                  </Link>
+                </Button>
+              </div>
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
                 Checkout hold
               </p>
@@ -353,8 +378,11 @@ export function ReservationCheckout({
 
             {pending ? (
               <>
-                <p className="mt-5 text-5xl font-semibold tracking-tight">
+                <p className="mt-5 font-mono text-5xl font-semibold tracking-tight">
                   {countdown}
+                </p>
+                <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                  Time remaining
                 </p>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   This reservation remains active until the timer reaches zero.
@@ -372,7 +400,7 @@ export function ReservationCheckout({
                 <p className="mt-4 text-2xl font-semibold">Reservation confirmed</p>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   Inventory has been committed for checkout completion. The hold
-                  is no longer releasable from this screen.
+                  is final and no longer actionable from this screen.
                 </p>
                 {confirmedAt ? (
                   <p className="mt-4 text-sm text-slate-400">
@@ -390,7 +418,7 @@ export function ReservationCheckout({
                 <p className="mt-4 text-2xl font-semibold">Reservation released</p>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   This hold is no longer active. The reserved units are back in
-                  the warehouse’s available inventory.
+                  the warehouse inventory pool.
                 </p>
                 {releasedAt ? (
                   <p className="mt-4 text-sm text-slate-400">
@@ -410,6 +438,13 @@ export function ReservationCheckout({
               <div className="mt-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 This reservation expired and was released automatically when the
                 checkout hold page was opened.
+              </div>
+            ) : null}
+
+            {!pending && !actionError ? (
+              <div className="mt-6 rounded-md border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+                This hold is no longer active. Return to inventory to create a
+                new reservation.
               </div>
             ) : null}
 
@@ -438,6 +473,19 @@ export function ReservationCheckout({
                   <XCircle className="h-4 w-4" aria-hidden="true" />
                 )}
                 Cancel reservation
+              </Button>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                asChild
+                variant="outline"
+                className="border-slate-700 bg-transparent text-white hover:bg-slate-900"
+              >
+                <Link href="/">
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  Return to inventory
+                </Link>
               </Button>
             </div>
           </aside>

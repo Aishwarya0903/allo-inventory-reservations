@@ -48,7 +48,7 @@ describe("reservation checkout helpers", () => {
           message: "Reservation expired before it could be confirmed.",
         },
       }),
-    ).toBe("Reservation expired.");
+    ).toBe("Reservation expired before confirmation could complete.");
   });
 
   it("falls back to the API message for state conflicts", () => {

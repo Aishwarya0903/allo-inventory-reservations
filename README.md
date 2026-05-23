@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-This repository is the foundation for a Next.js App Router application that will model checkout-time inventory reservations for Allo Health's multi-warehouse fulfillment platform.
+This repository contains a checkout-time inventory reservation workflow for Allo Health's multi-warehouse fulfillment platform.
 
 The goal is to avoid overselling while payment is in progress without making abandoned carts permanently reduce available inventory.
 
 ## Assignment Focus
 
-The project now includes the inventory listing, reservation creation flow, and the checkout hold screen used to confirm or release a reservation before payment completes.
+The current submission covers the core reservation path: list live stock by warehouse, place a temporary hold, confirm or release that hold, and clean up expired reservations safely.
 
 ## Tech Stack
 
@@ -201,9 +201,9 @@ TEST_DATABASE_URL="postgresql://..." npm run test:integration
 
 That remains the honest proof for the last-unit race condition against real Postgres.
 
-## Planned Reservation Flow
+## Reservation Flow
 
-When a user proceeds to checkout, the future API will validate the request, calculate available stock for the selected product and warehouse, and create a pending reservation for a short TTL window.
+When a user proceeds to checkout, the API validates the request, calculates available stock for the selected product and warehouse, and creates a pending reservation for a short TTL window.
 
 If payment succeeds, the reservation will be confirmed and stock will be permanently decremented. If payment fails or the hold expires, the reservation will be released.
 
@@ -249,7 +249,7 @@ Error behavior is explicit:
 
 ## Product Listing Flow
 
-The home page now acts as the reservation entry point.
+The home page acts as the reservation entry point.
 
 - It fetches `GET /api/products` and shows live stock by warehouse.
 - Each warehouse row exposes `totalUnits`, `reservedUnits`, and `availableUnits`.
@@ -307,9 +307,9 @@ WHERE "productId" = productId
 
 That single database statement is the concurrency boundary. If two checkout attempts race for the last available unit, Postgres can only let one statement update the row once availability no longer satisfies the condition. The losing request gets a `NOT_ENOUGH_STOCK` domain error, which the future API route can map to HTTP `409`.
 
-The important behavior is that when two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request succeeds and the other receives a conflict response.
+When two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request should succeed and the other should receive a conflict response.
 
-The unit tests assert the guarded update shape and service state transitions. True concurrency correctness is only validated against real Postgres. The integration harness in `tests/reservation-concurrency.integration.test.ts` is skipped unless `TEST_DATABASE_URL` is set and the target database already has the Prisma schema applied.
+Unit tests cover the guarded update shape and service state transitions. True concurrency correctness is only validated against real Postgres. The integration harness in `tests/reservation-concurrency.integration.test.ts` is skipped unless `TEST_DATABASE_URL` is set and the target database already has the Prisma schema applied.
 
 That integration harness covers two important Postgres-backed cases:
 
@@ -371,11 +371,12 @@ Complete:
 - Reservation detail API read route with expiry-aware read behavior
 - Confirm and release actions from the checkout hold page
 - Protected cron endpoint for scheduled expiry cleanup
+- Optional Upstash-backed idempotency for reserve and confirm
 - Initial Zod schema for future reservation requests
 
 Not complete yet:
 
-- Real Postgres integration run in CI or against hosted test infrastructure
+- Automated real Postgres integration run in CI or against hosted test infrastructure
 - Payment orchestration beyond reservation confirmation
 
 [^vercel-cron]: Vercel Cron Jobs docs: https://vercel.com/docs/cron-jobs and https://vercel.com/docs/cron-jobs/manage-cron-jobs

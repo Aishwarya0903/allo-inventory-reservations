@@ -54,7 +54,7 @@ export function getReservationActionErrorMessage(
   }
 
   if (failure.status === 410) {
-    return "Reservation expired.";
+    return "Reservation expired before confirmation could complete.";
   }
 
   if (failure.error?.message) {

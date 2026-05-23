@@ -1,6 +1,6 @@
 "use client";
 
-import { Package2, RefreshCw, Warehouse } from "lucide-react";
+import { AlertTriangle, Package2, RefreshCw, Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 
@@ -72,7 +72,16 @@ export function InventoryBrowser() {
       });
 
       if (!response.ok) {
-        throw new Error("Unable to load products.");
+        let message = "Unable to load live inventory right now.";
+
+        try {
+          const errorBody = (await response.json()) as ApiError;
+          message = errorBody.error.message || message;
+        } catch {
+          // Fall through to the generic inventory message.
+        }
+
+        throw new Error(message);
       }
 
       const data = (await response.json()) as ProductResponse;
@@ -93,8 +102,12 @@ export function InventoryBrowser() {
 
         return nextQuantities;
       });
-    } catch {
-      setPageError("Unable to load live inventory right now.");
+    } catch (error) {
+      setPageError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load live inventory right now.",
+      );
     } finally {
       if (background) {
         setIsRefreshing(false);
@@ -210,8 +223,8 @@ export function InventoryBrowser() {
               Product inventory
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Reserve from a specific warehouse row. Stock remains visible even
-              when a reservation attempt fails.
+              Reserve from a specific warehouse row. Availability reflects live
+              warehouse stock after holds are applied.
             </p>
           </div>
           <Button
@@ -228,7 +241,10 @@ export function InventoryBrowser() {
         </div>
 
         {pageError ? (
-          <ErrorCallout title="Inventory unavailable" message={pageError} />
+          <ErrorCallout
+            title="Inventory unavailable"
+            message={`${pageError} Check the database connection, migration status, and seeded data before retrying.`}
+          />
         ) : null}
 
         {isLoading ? (
@@ -238,7 +254,8 @@ export function InventoryBrowser() {
                 key={index}
                 className="rounded-md border border-slate-200 bg-white/85 p-6 shadow-sm"
               >
-                <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-24 animate-pulse rounded bg-slate-200" />
+                <div className="mt-4 h-8 w-52 animate-pulse rounded bg-slate-200" />
                 <div className="mt-3 h-4 w-72 animate-pulse rounded bg-slate-100" />
                 <div className="mt-6 h-32 animate-pulse rounded bg-slate-100" />
               </div>
@@ -246,7 +263,43 @@ export function InventoryBrowser() {
           </div>
         ) : null}
 
-        {!isLoading && !pageError ? (
+        {!isLoading && !pageError && products.length === 0 ? (
+          <div className="rounded-md border border-slate-200 bg-white/90 p-8 shadow-sm">
+            <div className="flex items-start gap-4">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="max-w-2xl">
+                <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
+                  Inventory empty
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-slate-950">
+                  No seeded products were returned by the API.
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-650">
+                  The app is running, but the inventory table does not have any
+                  product rows yet. Seed the database, or verify the connected
+                  environment before retrying this screen.
+                </p>
+                <div className="mt-5">
+                  <Button
+                    variant="outline"
+                    onClick={() => void loadProducts({ background: true })}
+                    disabled={isRefreshing}
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    />
+                    Refresh inventory
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!isLoading && !pageError && products.length > 0 ? (
           <div className="grid gap-5">
             {products.map((product) => (
               <article
@@ -316,7 +369,7 @@ export function InventoryBrowser() {
                                     {stockLevel.warehouse.city}
                                   </p>
                                   {rowError ? (
-                                    <p className="mt-2 text-sm font-medium text-rose-700">
+                                    <p className="mt-2 max-w-sm text-sm font-medium text-rose-700">
                                       {rowError}
                                     </p>
                                   ) : null}
@@ -354,6 +407,7 @@ export function InventoryBrowser() {
                                 onChange={(event) =>
                                   updateQuantity(rowKey, event.target.value)
                                 }
+                                disabled={pending || stockLevel.availableUnits === 0}
                                 className="h-10 w-20 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
                               />
                             </td>
@@ -366,7 +420,11 @@ export function InventoryBrowser() {
                                   pending || stockLevel.availableUnits === 0
                                 }
                               >
-                                {pending ? "Reserving..." : "Reserve"}
+                                {pending
+                                  ? "Reserving..."
+                                  : stockLevel.availableUnits === 0
+                                    ? "Unavailable"
+                                    : "Reserve"}
                               </Button>
                             </td>
                           </tr>
