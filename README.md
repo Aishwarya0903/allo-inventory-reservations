@@ -100,6 +100,7 @@ Recommended environment setup:
 - `DIRECT_URL`: a direct Postgres connection string for Prisma migrations and schema operations. On Supabase or Neon, this should be the non-pooled connection when the provider exposes a separate direct endpoint.
 - `TEST_DATABASE_URL`: an isolated hosted Postgres database or branch used only for the integration harness. This should point at a database where the Prisma schema has been applied and where test data can be created and deleted safely.
 - `CRON_SECRET`: a random secret used to protect the production cron endpoint that releases expired reservations.
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional Upstash Redis REST credentials used only for idempotency on the reserve and confirm endpoints.
 
 Typical setup flow:
 
@@ -134,6 +135,7 @@ Set these in the Vercel project before promoting the deployment:
 Optional but useful outside Vercel:
 
 - `TEST_DATABASE_URL`: hosted Postgres branch or test database used by the integration harness.
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: enable the idempotency bonus when you want retry-safe reserve and confirm calls.
 
 ### Hosted Postgres deployment flow
 
@@ -228,6 +230,13 @@ The Next.js route handlers are intentionally thin and live under `app/api/`.
 - `POST /api/reservations/[id]/confirm` confirms a reservation or returns an expiry/state error.
 - `POST /api/reservations/[id]/release` releases a reservation or returns a state error.
 
+Idempotency support is optional and applies only to:
+
+- `POST /api/reservations`
+- `POST /api/reservations/[id]/confirm`
+
+If the client omits `Idempotency-Key`, both endpoints behave normally. If the client sends `Idempotency-Key` and Upstash Redis is configured, the API stores the first response for a short TTL and replays it on retries instead of repeating the side effect. If the client sends `Idempotency-Key` but Redis is not configured, the API returns `503 Service Unavailable` and does not execute the mutation.
+
 Error behavior is explicit:
 
 - `NOT_ENOUGH_STOCK` maps to HTTP `409 Conflict`
@@ -235,6 +244,8 @@ Error behavior is explicit:
 - `RESERVATION_EXPIRED` maps to HTTP `410 Gone`
 - `RESERVATION_NOT_FOUND` maps to HTTP `404 Not Found`
 - invalid JSON or invalid request bodies map to HTTP `400 Bad Request`
+- idempotency with missing storage maps to HTTP `503 Service Unavailable`
+- reusing an idempotency key with a different reserve request body maps to HTTP `422 Unprocessable Entity`
 
 ## Product Listing Flow
 
@@ -251,6 +262,36 @@ The home page now acts as the reservation entry point.
 - If the hold expires before confirmation, the UI shows a visible expired message and reflects the released state after the API syncs.
 
 The product listing refreshes inventory after a failed stock conflict so the user sees the latest available units after the backend rejects the request.
+
+## Idempotency Bonus
+
+The reserve and confirm mutations support retry-safe behavior through the `Idempotency-Key` request header.
+
+### Supported endpoints
+
+- `POST /api/reservations`
+- `POST /api/reservations/[id]/confirm`
+
+Release is intentionally not wired into idempotency yet. The bonus scope stays focused on the mutation paths most likely to be retried by clients during checkout.
+
+### How it works
+
+- No `Idempotency-Key` header: the endpoint behaves normally.
+- `Idempotency-Key` header present but Upstash Redis env vars missing: the endpoint returns `503` and does not perform the side effect.
+- `Idempotency-Key` header present and Upstash Redis configured:
+  - the server scopes the key to the endpoint
+  - for reserve, it also hashes the validated request body
+  - if a stored response already exists, the server returns the original status and body
+  - if the same reserve key is reused with a different body, the server returns `422`
+
+### Required Redis env vars
+
+```bash
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+The implementation uses Upstash Redis REST only when these values are present. It does not fall back to an in-memory or local-only store.
 
 ## Concurrency Strategy
 

@@ -13,6 +13,11 @@ type ApiErrorBody = {
   };
 };
 
+export type JsonResponsePayload<T = unknown> = {
+  status: number;
+  body: T;
+};
+
 type ReservationHttpError = {
   status: number;
   code: string;
@@ -35,6 +40,36 @@ export function jsonError(status: number, code: string, message: string) {
   );
 }
 
+export function jsonPayload<T>(body: T, status = 200): JsonResponsePayload<T> {
+  return {
+    status,
+    body,
+  };
+}
+
+export function jsonErrorPayload(
+  status: number,
+  code: string,
+  message: string,
+): JsonResponsePayload<ApiErrorBody> {
+  return {
+    status,
+    body: {
+      error: {
+        code,
+        message,
+      },
+    },
+  };
+}
+
+export function jsonResponse<T>({
+  status,
+  body,
+}: JsonResponsePayload<T>) {
+  return NextResponse.json(body, { status });
+}
+
 export function mapReservationErrorToHttp(
   error: ReservationDomainError,
 ): ReservationHttpError {
@@ -52,15 +87,19 @@ export function mapReservationErrorToHttp(
   }
 }
 
-export function reservationErrorResponse(error: unknown) {
+export function reservationErrorPayload(error: unknown) {
   if (isReservationDomainError(error)) {
     const mapped = mapReservationErrorToHttp(error);
-    return jsonError(mapped.status, mapped.code, mapped.message);
+    return jsonErrorPayload(mapped.status, mapped.code, mapped.message);
   }
 
-  return jsonError(
+  return jsonErrorPayload(
     500,
     "INTERNAL_SERVER_ERROR",
     "An unexpected error occurred.",
   );
+}
+
+export function reservationErrorResponse(error: unknown) {
+  return jsonResponse(reservationErrorPayload(error));
 }
