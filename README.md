@@ -112,6 +112,93 @@ TEST_DATABASE_URL="postgresql://..." npm run test:integration
 
 For shared hosted environments, prefer running the integration harness against a dedicated preview database, branch database, or disposable test project rather than a developer’s primary dataset.
 
+## Deployment
+
+The app is prepared for deployment to Vercel with a hosted Postgres database.
+
+### Vercel runtime expectations
+
+- Vercel builds the Next.js app and runs the `postinstall` script, which now calls `prisma generate` so the deployed bundle always contains a current Prisma Client.[^prisma-vercel]
+- Database migrations are not run automatically during the app build. Apply them separately against the hosted database with `npm run db:deploy`.
+- Seeding is also a separate step. Run `npm run db:seed` from a shell that points at the hosted database after the schema is deployed.
+
+### Required Vercel environment variables
+
+Set these in the Vercel project before promoting the deployment:
+
+- `DATABASE_URL`: application runtime connection string. For Supabase or Neon, this can be the pooled URL if that is the provider’s recommended runtime connection.
+- `DIRECT_URL`: direct Postgres connection string used by Prisma migrations and schema operations.
+- `RESERVATION_TTL_MINUTES`: checkout hold lifetime in minutes. The default local example is `10`.
+- `CRON_SECRET`: random bearer secret used by the cron endpoint that releases expired reservations.
+
+Optional but useful outside Vercel:
+
+- `TEST_DATABASE_URL`: hosted Postgres branch or test database used by the integration harness.
+
+### Hosted Postgres deployment flow
+
+For an initial deployment, the safe order is:
+
+```bash
+npm run db:generate
+npm run db:deploy
+npm run db:seed
+```
+
+After the database is ready, deploy the application to Vercel. On later schema changes, run `npm run db:deploy` again before or alongside the rollout.
+
+### Cron behavior on Vercel
+
+The repository includes [vercel.json](/Users/yeswanth/Downloads/Projects/allo-inventory-reservations/vercel.json), which configures a cron invocation for:
+
+- `GET /api/cron/release-expired`
+
+The schedule is currently every 10 minutes:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/release-expired",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
+```
+
+Vercel will send an HTTP `GET` request to that route. When `CRON_SECRET` is configured on the project, Vercel sends it as a bearer token in the `Authorization` header, and the route rejects requests that do not match.[^vercel-cron]
+
+### Deployment checklist
+
+1. Create a hosted Postgres database or branch in Supabase, Neon, or an equivalent provider.
+2. Set `DATABASE_URL`, `DIRECT_URL`, `RESERVATION_TTL_MINUTES`, and `CRON_SECRET` in the Vercel project.
+3. Run `npm run db:deploy` against the hosted database.
+4. Run `npm run db:seed` against the hosted database.
+5. Deploy the app to Vercel.
+6. Verify the live product listing loads from the hosted database.
+7. Verify a reservation can be created from the product listing.
+8. Verify confirm succeeds for an active reservation.
+9. Verify cancel succeeds for an active reservation.
+10. Verify confirming an expired reservation returns HTTP `410`.
+
+### Post-deploy verification
+
+After deployment, the core flow to verify is:
+
+- the product listing page loads real inventory from the hosted database
+- reserving from a warehouse row succeeds and navigates to the reservation detail page
+- confirming an active reservation succeeds and moves the reservation to `confirmed`
+- cancelling an active reservation succeeds and moves the reservation to `released`
+- confirming an expired reservation returns `410 Gone`
+
+If you want to verify the real database concurrency path before production traffic, run:
+
+```bash
+TEST_DATABASE_URL="postgresql://..." npm run test:integration
+```
+
+That remains the honest proof for the last-unit race condition against real Postgres.
+
 ## Planned Reservation Flow
 
 When a user proceeds to checkout, the future API will validate the request, calculate available stock for the selected product and warehouse, and create a pending reservation for a short TTL window.
@@ -251,3 +338,4 @@ Not complete yet:
 - Payment orchestration beyond reservation confirmation
 
 [^vercel-cron]: Vercel Cron Jobs docs: https://vercel.com/docs/cron-jobs and https://vercel.com/docs/cron-jobs/manage-cron-jobs
+[^prisma-vercel]: Prisma deployment guidance for Vercel recommends generating Prisma Client in `postinstall`: https://www.prisma.io/docs/guides/deployment/deployment-guides/deploying-to-vercel
