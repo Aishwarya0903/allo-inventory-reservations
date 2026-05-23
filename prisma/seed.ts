@@ -107,19 +107,83 @@ const stockBySkuAndWarehouse = [
   },
 ];
 
+const demoProductSkus = products.map((product) => product.sku);
+const demoWarehouseCodes = [
+  "AUS-01",
+  "PHX-01",
+  "RDU-01",
+  ...warehouses.map((warehouse) => warehouse.code),
+];
+
 async function main() {
   const productRecords = new Map<string, { id: string }>();
   const warehouseRecords = new Map<string, { id: string }>();
 
-  for (const product of products) {
-    const record = await prisma.product.upsert({
-      where: { sku: product.sku },
-      update: {
-        name: product.name,
-        description: product.description,
-        imageUrl: product.imageUrl,
+  const [demoProducts, demoWarehouses] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        sku: {
+          in: demoProductSkus,
+        },
       },
-      create: product,
+      select: { id: true },
+    }),
+    prisma.warehouse.findMany({
+      where: {
+        code: {
+          in: demoWarehouseCodes,
+        },
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  const demoProductIds = demoProducts.map((product) => product.id);
+  const demoWarehouseIds = demoWarehouses.map((warehouse) => warehouse.id);
+
+  await prisma.$transaction([
+    prisma.reservation.deleteMany({
+      where: {
+        productId: {
+          in: demoProductIds,
+        },
+      },
+    }),
+    prisma.stockLevel.deleteMany({
+      where: {
+        OR: [
+          {
+            productId: {
+              in: demoProductIds,
+            },
+          },
+          {
+            warehouseId: {
+              in: demoWarehouseIds,
+            },
+          },
+        ],
+      },
+    }),
+    prisma.product.deleteMany({
+      where: {
+        sku: {
+          in: demoProductSkus,
+        },
+      },
+    }),
+    prisma.warehouse.deleteMany({
+      where: {
+        code: {
+          in: demoWarehouseCodes,
+        },
+      },
+    }),
+  ]);
+
+  for (const product of products) {
+    const record = await prisma.product.create({
+      data: product,
       select: { id: true },
     });
 
@@ -127,13 +191,8 @@ async function main() {
   }
 
   for (const warehouse of warehouses) {
-    const record = await prisma.warehouse.upsert({
-      where: { code: warehouse.code },
-      update: {
-        name: warehouse.name,
-        city: warehouse.city,
-      },
-      create: warehouse,
+    const record = await prisma.warehouse.create({
+      data: warehouse,
       select: { id: true },
     });
 
