@@ -68,8 +68,10 @@ Prisma commands:
 ```bash
 npm run db:generate
 npm run db:migrate
+npm run db:deploy
 npm run db:seed
 npm run db:studio
+TEST_DATABASE_URL="..." npm run test:integration
 ```
 
 ## Environment Variables
@@ -79,6 +81,7 @@ Copy `.env.example` to `.env` for local development and fill values as needed.
 ```bash
 DATABASE_URL=
 DIRECT_URL=
+TEST_DATABASE_URL=
 RESERVATION_TTL_MINUTES=10
 CRON_SECRET=
 UPSTASH_REDIS_REST_URL=
@@ -86,6 +89,27 @@ UPSTASH_REDIS_REST_TOKEN=
 ```
 
 No Supabase or hosted Postgres connection is required to inspect or build the app. Database commands need valid `DATABASE_URL` and `DIRECT_URL` values.
+
+## Hosted Postgres Setup
+
+The application is designed for hosted Postgres providers such as Supabase and Neon. The Prisma schema and reservation service do not rely on SQLite or any local-only fallback.
+
+Recommended environment setup:
+
+- `DATABASE_URL`: the main application connection string used by Next.js and Prisma Client at runtime. On Supabase or Neon, this can be the pooled connection string if that is what your deployment platform recommends for application traffic.
+- `DIRECT_URL`: a direct Postgres connection string for Prisma migrations and schema operations. On Supabase or Neon, this should be the non-pooled connection when the provider exposes a separate direct endpoint.
+- `TEST_DATABASE_URL`: an isolated hosted Postgres database or branch used only for the integration harness. This should point at a database where the Prisma schema has been applied and where test data can be created and deleted safely.
+
+Typical setup flow:
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+TEST_DATABASE_URL="postgresql://..." npm run test:integration
+```
+
+For shared hosted environments, prefer running the integration harness against a dedicated preview database, branch database, or disposable test project rather than a developer’s primary dataset.
 
 ## Planned Reservation Flow
 
@@ -155,7 +179,12 @@ That single database statement is the concurrency boundary. If two checkout atte
 
 The important behavior is that when two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request succeeds and the other receives a conflict response.
 
-The unit tests assert the guarded update shape and service state transitions. End-to-end concurrency still requires a real Postgres test database. A skipped integration harness in `tests/reservation-concurrency.integration.test.ts` runs the two-simultaneous-reservations case when `TEST_DATABASE_URL` is present and the test database has the Prisma schema applied.
+The unit tests assert the guarded update shape and service state transitions. True concurrency correctness is only validated against real Postgres. The integration harness in `tests/reservation-concurrency.integration.test.ts` is skipped unless `TEST_DATABASE_URL` is set and the target database already has the Prisma schema applied.
+
+That integration harness covers two important Postgres-backed cases:
+
+- two simultaneous `reserveInventory` calls competing for the last unit, where exactly one must succeed and the other must fail with `NOT_ENOUGH_STOCK`
+- confirming an already expired pending reservation, where the service must raise `RESERVATION_EXPIRED` and release `reservedUnits` back to stock
 
 The checkout UI tests cover countdown formatting, expired-state detection, and the error messages shown for `404`, `409`, and `410` reservation responses. They do not try to simulate browser-level timing or database concurrency in-memory.
 
@@ -178,7 +207,7 @@ Complete:
 - Stock availability and invariant helpers
 - Reservation service with typed domain errors
 - Unit coverage for guarded reserve behavior, confirm/release transitions, and expiry cleanup
-- Skipped Postgres integration harness for the last-unit concurrency case
+- Hosted-Postgres integration harness for last-unit concurrency and expired confirmation behavior
 - Product listing UI backed by live API routes
 - Reserve flow from warehouse rows into a real reservation detail checkout screen
 - Reservation detail API read route with expiry-aware read behavior

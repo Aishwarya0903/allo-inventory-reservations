@@ -10,8 +10,10 @@
     "test": "vitest run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:integration": "vitest run tests/reservation-concurrency.integration.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
