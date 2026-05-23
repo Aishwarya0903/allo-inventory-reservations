@@ -35,68 +35,73 @@ const products = [
 
 const warehouses = [
   {
-    code: "AUS-01",
-    name: "Austin Central Fulfillment",
-    city: "Austin",
+    code: "BLR-01",
+    name: "Bengaluru South Fulfillment",
+    city: "Bengaluru",
   },
   {
-    code: "PHX-01",
-    name: "Phoenix West Fulfillment",
-    city: "Phoenix",
+    code: "BOM-01",
+    name: "Mumbai West Fulfillment",
+    city: "Mumbai",
   },
   {
-    code: "RDU-01",
-    name: "Raleigh East Fulfillment",
-    city: "Raleigh",
+    code: "DEL-01",
+    name: "Delhi NCR Fulfillment",
+    city: "Delhi NCR",
+  },
+  {
+    code: "HYD-01",
+    name: "Hyderabad Central Fulfillment",
+    city: "Hyderabad",
   },
 ];
 
 const stockBySkuAndWarehouse = [
   {
     sku: "ALLO-ELECTROLYTE-CITRUS-30",
-    warehouseCode: "AUS-01",
+    warehouseCode: "BLR-01",
     totalUnits: 120,
     reservedUnits: 8,
   },
   {
     sku: "ALLO-ELECTROLYTE-CITRUS-30",
-    warehouseCode: "PHX-01",
+    warehouseCode: "BOM-01",
     totalUnits: 80,
     reservedUnits: 3,
   },
   {
     sku: "ALLO-SLEEP-GUMMIES-BERRY-60",
-    warehouseCode: "AUS-01",
+    warehouseCode: "BLR-01",
     totalUnits: 55,
     reservedUnits: 5,
   },
   {
     sku: "ALLO-SLEEP-GUMMIES-BERRY-60",
-    warehouseCode: "RDU-01",
+    warehouseCode: "DEL-01",
     totalUnits: 70,
     reservedUnits: 6,
   },
   {
     sku: "ALLO-TRAVEL-TUMBLER-24OZ",
-    warehouseCode: "PHX-01",
+    warehouseCode: "BOM-01",
     totalUnits: 34,
     reservedUnits: 2,
   },
   {
     sku: "ALLO-TRAVEL-TUMBLER-24OZ",
-    warehouseCode: "RDU-01",
+    warehouseCode: "HYD-01",
     totalUnits: 26,
     reservedUnits: 0,
   },
   {
     sku: "ALLO-COMPRESSION-SOCKS-M",
-    warehouseCode: "AUS-01",
+    warehouseCode: "DEL-01",
     totalUnits: 90,
     reservedUnits: 12,
   },
   {
     sku: "ALLO-COMPRESSION-SOCKS-M",
-    warehouseCode: "PHX-01",
+    warehouseCode: "HYD-01",
     totalUnits: 45,
     reservedUnits: 4,
   },
