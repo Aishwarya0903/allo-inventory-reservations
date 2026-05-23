@@ -99,6 +99,7 @@ Recommended environment setup:
 - `DATABASE_URL`: the main application connection string used by Next.js and Prisma Client at runtime. On Supabase or Neon, this can be the pooled connection string if that is what your deployment platform recommends for application traffic.
 - `DIRECT_URL`: a direct Postgres connection string for Prisma migrations and schema operations. On Supabase or Neon, this should be the non-pooled connection when the provider exposes a separate direct endpoint.
 - `TEST_DATABASE_URL`: an isolated hosted Postgres database or branch used only for the integration harness. This should point at a database where the Prisma schema has been applied and where test data can be created and deleted safely.
+- `CRON_SECRET`: a random secret used to protect the production cron endpoint that releases expired reservations.
 
 Typical setup flow:
 
@@ -135,6 +136,7 @@ The Next.js route handlers are intentionally thin and live under `app/api/`.
 - `GET /api/products` runs lazy cleanup for expired reservations before reading products, then returns products with warehouse-level `totalUnits`, `reservedUnits`, and computed `availableUnits`.
 - `GET /api/warehouses` returns the warehouse list.
 - `GET /api/reservations/[id]` returns a reservation with product and warehouse details. If a pending reservation has already expired, the read path releases it first and returns the released state with an `expiredOnRead` flag.
+- `GET /api/cron/release-expired` runs a production-safe expiry cleanup sweep when called with `Authorization: Bearer <CRON_SECRET>`.
 - `POST /api/reservations` validates the JSON body with Zod and creates a pending reservation.
 - `POST /api/reservations/[id]/confirm` confirms a reservation or returns an expiry/state error.
 - `POST /api/reservations/[id]/release` releases a reservation or returns a state error.
@@ -190,7 +192,35 @@ The checkout UI tests cover countdown formatting, expired-state detection, and t
 
 ## Expiry Strategy
 
-Expired reservations will later be handled with lazy cleanup during reservation attempts plus a cron-safe endpoint for scheduled release work.
+Expired reservations are handled in two layers:
+
+- Lazy cleanup on user-facing reads:
+  - `GET /api/products` releases expired pending reservations before listing inventory.
+  - `GET /api/reservations/[id]` releases an expired pending hold before returning reservation detail.
+- Scheduled cleanup for production:
+  - `GET /api/cron/release-expired` calls `cleanupExpiredReservations`.
+  - The route requires `Authorization: Bearer <CRON_SECRET>`.
+  - If `CRON_SECRET` is missing on the server, the endpoint returns a `500` configuration error rather than silently running unsecured.
+
+For Vercel deployments, the intended setup is:
+
+1. Add `CRON_SECRET` as a project environment variable.
+2. Add a cron entry in `vercel.json` that targets the route.
+
+Example:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/release-expired",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
+```
+
+Vercel will invoke the configured path with an HTTP `GET` request, and when `CRON_SECRET` is configured on the project it will send the bearer token in the `Authorization` header for the route to verify.[^vercel-cron]
 
 The scaffold includes `RESERVATION_TTL_MINUTES`, `CRON_SECRET`, and Upstash placeholders for future deployment-friendly expiry support.
 
@@ -212,9 +242,12 @@ Complete:
 - Reserve flow from warehouse rows into a real reservation detail checkout screen
 - Reservation detail API read route with expiry-aware read behavior
 - Confirm and release actions from the checkout hold page
+- Protected cron endpoint for scheduled expiry cleanup
 - Initial Zod schema for future reservation requests
 
 Not complete yet:
 
 - Real Postgres integration run in CI or against hosted test infrastructure
 - Payment orchestration beyond reservation confirmation
+
+[^vercel-cron]: Vercel Cron Jobs docs: https://vercel.com/docs/cron-jobs and https://vercel.com/docs/cron-jobs/manage-cron-jobs
