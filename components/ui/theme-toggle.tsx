@@ -37,7 +37,7 @@ export function ThemeToggle() {
           ? `Switch to ${nextTheme} mode`
           : "Toggle between light and dark mode"
       }
-      className="theme-toggle-shadow inline-flex shrink-0 items-center gap-0.5 rounded-full border border-app-soft bg-app-veil p-0.5 text-sm text-app-muted transition hover:border-app-strong hover:text-[var(--foreground)] sm:gap-1 sm:p-1"
+      className="theme-toggle-shadow inline-flex shrink-0 items-center gap-0.5 rounded-full border border-app-soft bg-app-veil p-0.5 text-xs text-app-muted transition hover:border-app-strong hover:text-[var(--foreground)] sm:gap-1"
       onClick={() => {
         const updatedTheme = theme === "dark" ? "light" : "dark";
         setTheme(updatedTheme);
@@ -46,7 +46,7 @@ export function ThemeToggle() {
     >
       <span
         className={cn(
-          "inline-flex items-center gap-2 rounded-full px-2.5 py-2 transition sm:px-3",
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition sm:px-3",
           theme === "light"
             ? "bg-[var(--surface-strong)] text-[var(--foreground)] shadow-sm"
             : "text-app-soft",
@@ -57,7 +57,7 @@ export function ThemeToggle() {
       </span>
       <span
         className={cn(
-          "inline-flex items-center gap-2 rounded-full px-2.5 py-2 transition sm:px-3",
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition sm:px-3",
           theme === "dark"
             ? "bg-[var(--surface-strong)] text-[var(--foreground)] shadow-sm"
             : "text-app-soft",

@@ -4,11 +4,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Boxes,
-  Clock3,
-  Package2,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   Warehouse,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -233,17 +230,17 @@ export function InventoryBrowser({
     <main className="relative min-h-screen overflow-hidden pb-16 text-[var(--foreground)]">
       <SiteHeader currentPath="inventory" />
 
-      <section className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:px-8">
-        <div className="cinematic-panel grid rounded-[40px] lg:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
-          <div className="px-6 py-9 sm:px-8 sm:py-12 lg:px-11 lg:py-14">
-            <span className="accent-pill inline-flex max-w-full items-center gap-2 rounded-full px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px] sm:tracking-[0.24em]">
+      <section className="mx-auto max-w-7xl px-4 pb-8 pt-7 sm:px-6 lg:px-8">
+        <div className="cinematic-panel grid rounded-[36px] lg:grid-cols-[minmax(0,1.1fr)_minmax(330px,0.9fr)]">
+          <div className="px-6 py-9 sm:px-8 sm:py-12 lg:px-10 lg:py-14">
+            <span className="accent-pill inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px]">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               Concurrency-safe checkout holds
             </span>
-            <h1 className="font-display mt-7 max-w-[320px] break-words text-3xl leading-[1.04] text-[var(--foreground)] sm:max-w-3xl sm:text-6xl sm:leading-[0.95] lg:text-7xl">
+            <h1 className="mt-7 max-w-[330px] break-words text-4xl font-semibold leading-[1.03] tracking-tight text-[var(--foreground)] sm:max-w-3xl sm:text-6xl sm:leading-[0.95] lg:text-7xl">
               Reserve inventory before payment completes.
             </h1>
-            <p className="mt-6 max-w-[320px] text-base leading-8 text-app-muted sm:max-w-2xl sm:text-lg">
+            <p className="mt-6 max-w-[540px] text-base leading-8 text-app-muted sm:text-lg">
               Hold units at checkout, confirm on payment success, and release
               failed or expired holds automatically across every warehouse row.
             </p>
@@ -275,7 +272,7 @@ export function InventoryBrowser({
               </Button>
             </div>
 
-            <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            <div className="mt-9 flex flex-wrap gap-2.5">
               {[
                 "Atomic stock guard",
                 "Warehouse-specific holds",
@@ -283,7 +280,7 @@ export function InventoryBrowser({
               ].map((item) => (
                 <div
                   key={item}
-                  className="glass-row rounded-[24px] px-4 py-4 text-sm font-medium text-app-muted"
+                  className="rounded-full border border-app-soft bg-app-veil px-3.5 py-2 text-xs font-medium text-app-muted"
                 >
                   {item}
                 </div>
@@ -291,55 +288,53 @@ export function InventoryBrowser({
             </div>
           </div>
 
-          <div className="border-t border-app-soft px-6 py-8 sm:px-8 lg:border-l lg:border-t-0 lg:px-8 lg:py-10">
-            <div className="surface-card max-w-[320px] rounded-[32px] p-5 sm:max-w-none sm:p-6">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-app-soft">
-                <Sparkles
-                  className="h-4 w-4 text-[var(--accent-strong)]"
-                  aria-hidden="true"
-                />
-                Checkout summary
+          <div className="border-t border-app-soft px-6 py-7 sm:px-8 lg:border-l lg:border-t-0 lg:px-8 lg:py-9">
+            <div className="surface-card rounded-[30px] p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-app-soft">
+                  Checkout summary
+                </p>
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-app-soft bg-app-veil text-[var(--accent-strong)]">
+                  <Boxes className="h-4 w-4" aria-hidden="true" />
+                </span>
               </div>
 
               {isLoading ? (
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="mt-5 rounded-[24px] border border-app-soft bg-app-veil">
                   {Array.from({ length: 4 }).map((_, index) => (
                     <div
                       key={index}
-                      className="rounded-[24px] border border-app-soft bg-app-veil p-5"
+                      className="border-b border-app-soft px-4 py-4 last:border-b-0"
                     >
-                      <div className="h-3 w-24 animate-pulse rounded-full bg-white/10" />
-                      <div className="mt-5 h-10 w-24 animate-pulse rounded-full bg-white/10" />
+                      <div className="h-3 w-28 animate-pulse rounded-full bg-white/10" />
+                      <div className="mt-3 h-8 w-20 animate-pulse rounded-full bg-white/10" />
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <MetricCard
+                <div className="mt-5 overflow-hidden rounded-[24px] border border-app-soft bg-app-veil">
+                  <SummaryMetric
                     label="Active warehouses"
                     value={String(inventorySummary.warehouseCount)}
-                    icon={<Warehouse className="h-4 w-4" aria-hidden="true" />}
                   />
-                  <MetricCard
+                  <SummaryMetric
                     label="Available units"
                     value={formatMetric(inventorySummary.availableUnits)}
-                    icon={<Boxes className="h-4 w-4" aria-hidden="true" />}
+                    accent
                   />
-                  <MetricCard
+                  <SummaryMetric
                     label="Reserved units"
                     value={formatMetric(inventorySummary.reservedUnits)}
-                    icon={<Package2 className="h-4 w-4" aria-hidden="true" />}
                   />
-                  <MetricCard
+                  <SummaryMetric
                     label="Reservation TTL"
                     value={`${reservationTtlMinutes} min`}
-                    icon={<Clock3 className="h-4 w-4" aria-hidden="true" />}
                   />
                 </div>
               )}
 
-              <div className="mt-6 rounded-[28px] border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.02))] p-5">
-                <p className="text-sm font-medium uppercase tracking-[0.18em] text-app-soft">
+              <div className="mt-5 rounded-[24px] border border-[color-mix(in_srgb,var(--accent)_26%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.11),rgba(255,255,255,0.02))] p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-app-soft">
                   Stock posture
                 </p>
                 <div className="mt-4">
@@ -354,7 +349,7 @@ export function InventoryBrowser({
                       snapshot.
                     </p>
                   </div>
-                  <div className="mt-5 inline-flex rounded-2xl border border-app-soft px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-app-muted">
+                  <div className="mt-5 inline-flex rounded-full border border-app-soft px-3.5 py-2 text-xs font-medium text-app-muted">
                     Availability = total - reserved
                   </div>
                 </div>
@@ -368,18 +363,17 @@ export function InventoryBrowser({
         id="inventory-section"
         className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8"
       >
-        <div className="mb-6 flex flex-col gap-4 rounded-[34px] border border-app-soft bg-app-veil px-6 py-6 md:flex-row md:items-end md:justify-between lg:px-8">
+        <div className="mb-6 flex flex-col gap-4 rounded-[30px] border border-app-soft bg-app-veil px-5 py-5 md:flex-row md:items-end md:justify-between lg:px-7">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-app-soft">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-app-soft">
               Live warehouse inventory
             </p>
-            <h2 className="font-display mt-3 text-3xl text-[var(--foreground)] sm:text-4xl">
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-3xl">
               Stock after active checkout holds.
             </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-app-muted sm:text-base">
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-app-muted">
               Reserve from a specific warehouse row. Available units already
-              reflect in-flight holds, so this screen tracks the actual inventory
-              left for checkout allocation.
+              reflect active holds.
             </p>
           </div>
           <Button
@@ -426,16 +420,16 @@ export function InventoryBrowser({
         ) : null}
 
         {!isLoading && !pageError && products.length === 0 ? (
-          <div className="surface-card rounded-[34px] px-6 py-8 sm:px-8">
+          <div className="surface-card rounded-[30px] px-6 py-8 sm:px-8">
             <div className="flex items-start gap-4">
               <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-app-soft bg-app-veil text-[var(--foreground)]">
                 <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="max-w-2xl">
-                <p className="text-sm font-medium uppercase tracking-[0.18em] text-app-soft">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-app-soft">
                   Inventory empty
                 </p>
-                <h3 className="font-display mt-3 text-3xl text-[var(--foreground)]">
+                <h3 className="mt-3 text-2xl font-semibold text-[var(--foreground)]">
                   No seeded products were returned by the API.
                 </h3>
                 <p className="mt-4 text-sm leading-7 text-app-muted">
@@ -466,33 +460,33 @@ export function InventoryBrowser({
             {products.map((product) => (
               <article
                 key={product.id}
-                className="surface-card-strong overflow-hidden rounded-[36px] transition duration-200 hover:border-app-strong"
+                className="surface-card-strong overflow-hidden rounded-[30px] transition duration-200 hover:border-app-strong"
               >
-                <div className="grid gap-6 border-b border-app-soft px-6 py-7 sm:px-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+                <div className="grid gap-6 border-b border-app-soft px-5 py-6 sm:px-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                   <div>
                     <div className="flex items-start gap-4">
-                      <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.2),rgba(222,129,99,0.16))] text-2xl font-semibold text-[var(--foreground)] shadow-[0_20px_60px_rgba(0,0,0,0.16)]">
+                      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.03))] text-lg font-semibold text-[var(--foreground)]">
                         {getProductInitial(product.name)}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-app-soft">
+                        <p className="font-mono text-xs text-app-soft">
                           {product.sku}
                         </p>
-                        <h3 className="font-display mt-2 text-3xl text-[var(--foreground)]">
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
                           {product.name}
                         </h3>
-                        <p className="mt-3 max-w-3xl text-sm leading-7 text-app-muted sm:text-base">
+                        <p className="mt-2 max-w-3xl text-sm leading-7 text-app-muted">
                           {product.description}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <ProductStatCard
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <ProductMetric
                       label="Warehouses"
                       value={String(product.stockLevels.length)}
                     />
-                    <ProductStatCard
+                    <ProductMetric
                       label="Reserved"
                       value={formatMetric(
                         product.stockLevels.reduce(
@@ -501,7 +495,7 @@ export function InventoryBrowser({
                         ),
                       )}
                     />
-                    <ProductStatCard
+                    <ProductMetric
                       label="Available"
                       value={formatMetric(
                         product.stockLevels.reduce(
@@ -513,7 +507,7 @@ export function InventoryBrowser({
                   </div>
                 </div>
 
-                <div className="grid gap-4 px-6 py-6 sm:px-8">
+                <div className="grid gap-3 px-5 py-5 sm:px-7">
                   {product.stockLevels.map((stockLevel) => {
                     const rowKey = getStockRowKey(
                       product.id,
@@ -526,37 +520,31 @@ export function InventoryBrowser({
                     return (
                       <section
                         key={rowKey}
-                        className="glass-row rounded-[30px] px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-app-strong hover:bg-[var(--surface-strong)] sm:px-6"
+                        className="glass-row rounded-[24px] px-4 py-4 transition duration-200 hover:border-app-strong hover:bg-[var(--surface-strong)] sm:px-5"
                       >
-                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+                        <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.9fr)_minmax(320px,1fr)_auto] xl:items-center">
                           <div>
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                              <div className="flex items-start gap-3">
-                                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.14),rgba(255,255,255,0.03))] text-[var(--foreground)]">
-                                  <Warehouse className="h-5 w-5" aria-hidden="true" />
-                                </span>
-                                <div>
-                                  <p className="text-lg font-semibold text-[var(--foreground)]">
-                                    {stockLevel.warehouse.name}
-                                  </p>
-                                  <p className="mt-1 text-sm text-app-muted">
-                                    {stockLevel.warehouse.code} ·{" "}
-                                    {stockLevel.warehouse.city}
-                                  </p>
-                                </div>
-                              </div>
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1.5 text-sm font-semibold ${
-                                  unavailable
-                                    ? "border border-app-soft bg-app-surface text-app-soft"
-                                    : "accent-pill"
-                                }`}
-                              >
-                                {stockLevel.availableUnits} available
+                            <div className="flex items-start gap-3">
+                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.12),rgba(255,255,255,0.03))] text-[var(--foreground)]">
+                                <Warehouse
+                                  className="h-5 w-5"
+                                  aria-hidden="true"
+                                />
                               </span>
+                              <div className="min-w-0">
+                                <p className="text-base font-semibold text-[var(--foreground)]">
+                                  {stockLevel.warehouse.name}
+                                </p>
+                                <p className="mt-1 text-sm text-app-muted">
+                                  {stockLevel.warehouse.code} ·{" "}
+                                  {stockLevel.warehouse.city}
+                                </p>
+                              </div>
                             </div>
+                          </div>
 
-                            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <div className="grid overflow-hidden rounded-[20px] border border-app-soft bg-[var(--surface)] sm:grid-cols-3">
                               <WarehouseMetric
                                 label="Total units"
                                 value={formatMetric(stockLevel.totalUnits)}
@@ -573,7 +561,7 @@ export function InventoryBrowser({
                             </div>
 
                             {rowError ? (
-                              <div className="mt-4 rounded-[24px] border border-amber-400/30 bg-[linear-gradient(135deg,rgba(223,242,164,0.14),rgba(190,89,76,0.18))] px-4 py-3 text-sm text-[var(--foreground)] shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
+                              <div className="mt-3 rounded-[20px] border border-amber-400/30 bg-[linear-gradient(135deg,rgba(223,242,164,0.12),rgba(190,89,76,0.14))] px-4 py-3 text-sm text-[var(--foreground)]">
                                 <p className="font-medium text-[var(--foreground)]">
                                   {rowError}
                                 </p>
@@ -581,10 +569,10 @@ export function InventoryBrowser({
                             ) : null}
                           </div>
 
-                          <div className="grid gap-3 sm:grid-cols-[110px_160px] xl:min-w-[296px]">
+                          <div className="grid gap-3 sm:grid-cols-[96px_132px] xl:min-w-[240px]">
                             <div>
                               <label
-                                className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-app-soft"
+                                className="mb-2 block text-xs font-medium text-app-soft"
                                 htmlFor={rowKey}
                               >
                                 Quantity
@@ -599,7 +587,7 @@ export function InventoryBrowser({
                                   updateQuantity(rowKey, event.target.value)
                                 }
                                 disabled={pending || unavailable}
-                                className="h-12 w-full rounded-2xl border border-app-soft bg-[var(--surface)] px-4 text-base font-medium text-[var(--foreground)] outline-none transition placeholder:text-app-soft focus:border-[color-mix(in_srgb,var(--accent)_48%,transparent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_18%,transparent)]"
+                                className="h-10 w-full rounded-full border border-app-soft bg-[var(--surface)] px-4 text-center text-sm font-semibold text-[var(--foreground)] outline-none transition placeholder:text-app-soft focus:border-[color-mix(in_srgb,var(--accent)_48%,transparent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_18%,transparent)]"
                               />
                             </div>
 
@@ -633,33 +621,30 @@ export function InventoryBrowser({
   );
 }
 
-function MetricCard({
+function SummaryMetric({
   label,
   value,
-  icon,
+  accent = false,
 }: {
   label: string;
   value: string;
-  icon: React.ReactNode;
+  accent?: boolean;
 }) {
   return (
-    <div className="rounded-[24px] border border-app-soft bg-app-veil p-5">
-      <div className="flex items-center justify-between gap-3 text-app-soft">
-        <p className="text-xs font-medium uppercase tracking-[0.18em]">
-          {label}
-        </p>
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-app-soft bg-[var(--surface)]">
-          {icon}
-        </span>
-      </div>
-      <p className="mt-5 text-3xl font-semibold tracking-tight text-[var(--foreground)]">
+    <div className="flex items-center justify-between gap-4 border-b border-app-soft px-4 py-4 last:border-b-0">
+      <p className="text-sm text-app-muted">{label}</p>
+      <p
+        className={`text-xl font-semibold tracking-tight ${
+          accent ? "text-[var(--accent-strong)]" : "text-[var(--foreground)]"
+        }`}
+      >
         {value}
       </p>
     </div>
   );
 }
 
-function ProductStatCard({
+function ProductMetric({
   label,
   value,
 }: {
@@ -667,13 +652,11 @@ function ProductStatCard({
   value: string;
 }) {
   return (
-    <div className="rounded-[22px] border border-app-soft bg-app-veil px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-app-soft">
-        {label}
-      </p>
-      <p className="mt-2 text-xl font-semibold text-[var(--foreground)]">
+    <div className="inline-flex items-center gap-2 rounded-full border border-app-soft bg-app-veil px-3.5 py-2">
+      <span className="text-xs text-app-soft">{label}</span>
+      <span className="text-sm font-semibold text-[var(--foreground)]">
         {value}
-      </p>
+      </span>
     </div>
   );
 }
@@ -689,16 +672,20 @@ function WarehouseMetric({
 }) {
   return (
     <div
-      className={`rounded-[20px] border px-4 py-3 ${
+      className={`border-b border-app-soft px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 ${
         accent
-          ? "border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.14),rgba(255,255,255,0.01))]"
-          : "border-app-soft bg-[var(--surface)]"
+          ? "bg-[linear-gradient(135deg,rgba(223,242,164,0.12),rgba(255,255,255,0.01))]"
+          : ""
       }`}
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-app-soft">
+      <p className="text-[11px] font-medium text-app-soft">
         {label}
       </p>
-      <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+      <p
+        className={`mt-1 text-base font-semibold ${
+          accent ? "text-[var(--accent-strong)]" : "text-[var(--foreground)]"
+        }`}
+      >
         {value}
       </p>
     </div>

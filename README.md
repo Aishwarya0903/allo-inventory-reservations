@@ -38,7 +38,7 @@ Available stock is calculated as:
 totalUnits - reservedUnits
 ```
 
-The schema enforces uniqueness for one stock row per product and warehouse. Application code will enforce stock invariants such as `reservedUnits <= totalUnits` before writes and inside reservation transactions.
+The schema enforces uniqueness for one stock row per product and warehouse. Application code enforces stock invariants such as `reservedUnits <= totalUnits` before writes and inside reservation transactions.
 
 ## Local Development
 
@@ -309,7 +309,7 @@ WHERE "productId" = productId
   AND ("totalUnits" - "reservedUnits") >= quantity
 ```
 
-That single database statement is the concurrency boundary. If two checkout attempts race for the last available unit, Postgres can only let one statement update the row once availability no longer satisfies the condition. The losing request gets a `NOT_ENOUGH_STOCK` domain error, which the future API route can map to HTTP `409`.
+That single database statement is the concurrency boundary. If two checkout attempts race for the last available unit, Postgres can only let one statement update the row once availability no longer satisfies the condition. The losing request gets a `NOT_ENOUGH_STOCK` domain error, which the API maps to HTTP `409`.
 
 When two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request should succeed and the other should receive a conflict response.
 
@@ -374,11 +374,12 @@ Complete:
 - Hosted-Postgres integration harness for last-unit concurrency and expired confirmation behavior
 - Product listing UI backed by live API routes
 - Reserve flow from warehouse rows into a real reservation detail checkout screen
+- Polished dark/light UI for inventory operations and checkout holds
 - Reservation detail API read route with expiry-aware read behavior
 - Confirm and release actions from the checkout hold page
 - Protected cron endpoint for scheduled expiry cleanup
 - Optional Upstash-backed idempotency for reserve and confirm
-- Initial Zod schema for future reservation requests
+- Zod validation for reservation creation and reservation route parameters
 
 Not complete yet:
 

@@ -212,12 +212,12 @@ export function ReservationCheckout({
       <main className="relative min-h-screen overflow-hidden pb-16 text-[var(--foreground)]">
         <SiteHeader currentPath="reservation" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="cinematic-panel rounded-[40px] p-8 sm:p-10">
+          <div className="cinematic-panel rounded-[34px] p-7 sm:p-9">
             <div className="h-4 w-32 animate-pulse rounded-full bg-white/10" />
             <div className="mt-5 h-14 w-72 animate-pulse rounded-full bg-white/10" />
             <div className="mt-8 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="h-72 animate-pulse rounded-[28px] border border-app-soft bg-app-veil" />
-              <div className="h-72 animate-pulse rounded-[28px] border border-app-soft bg-app-veil" />
+              <div className="h-72 animate-pulse rounded-[24px] border border-app-soft bg-app-veil" />
+              <div className="h-72 animate-pulse rounded-[24px] border border-app-soft bg-app-veil" />
             </div>
           </div>
         </div>
@@ -230,11 +230,11 @@ export function ReservationCheckout({
       <main className="relative min-h-screen overflow-hidden pb-16 text-[var(--foreground)]">
         <SiteHeader currentPath="reservation" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="cinematic-panel rounded-[40px] p-8 sm:p-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-app-soft">
+          <div className="cinematic-panel rounded-[34px] p-7 sm:p-9">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-app-soft">
               Reservation unavailable
             </p>
-            <h1 className="font-display mt-4 text-4xl text-[var(--foreground)]">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[var(--foreground)] sm:text-4xl">
               {pageError}
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-app-muted sm:text-base">
@@ -295,8 +295,8 @@ export function ReservationCheckout({
       <SiteHeader currentPath="reservation" />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <section className="cinematic-panel rounded-[40px]">
-          <div className="grid gap-6 border-b border-app-soft px-6 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:px-10 lg:py-10">
+        <section className="cinematic-panel rounded-[34px]">
+          <div className="grid gap-6 border-b border-app-soft px-6 py-7 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:px-9 lg:py-9">
             <div className="max-w-4xl">
               <div className="mb-5">
                 <Button asChild variant="outline" size="sm">
@@ -306,10 +306,10 @@ export function ReservationCheckout({
                   </Link>
                 </Button>
               </div>
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-app-soft">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-app-soft">
                 Checkout hold
               </p>
-              <h1 className="font-display mt-4 text-4xl leading-[0.98] text-[var(--foreground)] sm:text-5xl">
+              <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-[var(--foreground)] sm:text-5xl">
                 {heroCopy.title}
               </h1>
               <p className="mt-5 max-w-3xl text-sm leading-7 text-app-muted sm:text-base">
@@ -318,7 +318,7 @@ export function ReservationCheckout({
             </div>
 
             <div
-              className={`inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${getStatusTone(
+              className={`inline-flex rounded-full border px-3.5 py-1.5 text-sm font-semibold ${getStatusTone(
                 reservation.status,
               )}`}
             >
@@ -326,18 +326,18 @@ export function ReservationCheckout({
             </div>
           </div>
 
-          <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_360px] lg:px-10 lg:py-8">
-            <div className="grid gap-6">
-              <div className="glass-row rounded-[32px] p-6">
+          <div className="grid gap-5 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_340px] lg:px-9 lg:py-7">
+            <div className="grid gap-5">
+              <div className="glass-row rounded-[26px] p-5">
                 <div className="flex items-start gap-4">
-                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[22px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.2),rgba(222,129,99,0.16))] text-[var(--foreground)] shadow-[0_20px_60px_rgba(0,0,0,0.16)]">
-                    <Store className="h-6 w-6" aria-hidden="true" />
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-[18px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.03))] text-[var(--foreground)]">
+                    <Store className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-app-soft">
                       Product
                     </p>
-                    <h2 className="font-display mt-3 text-3xl text-[var(--foreground)]">
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
                       {reservation.product.name}
                     </h2>
                     <p className="mt-2 font-mono text-sm text-app-soft">
@@ -350,14 +350,14 @@ export function ReservationCheckout({
                 </div>
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="glass-row rounded-[32px] p-6">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="glass-row rounded-[26px] p-5">
                   <div className="flex items-start gap-4">
                     <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-app-soft bg-app-veil text-[var(--foreground)]">
                       <Warehouse className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-app-soft">
                         Warehouse
                       </p>
                       <p className="mt-3 text-xl font-semibold text-[var(--foreground)]">
@@ -372,8 +372,8 @@ export function ReservationCheckout({
                   </div>
                 </div>
 
-                <div className="glass-row rounded-[32px] p-6">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
+                <div className="glass-row rounded-[26px] p-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-app-soft">
                     Hold details
                   </p>
                   <dl className="mt-4 grid gap-3 text-sm text-app-muted">
@@ -398,8 +398,8 @@ export function ReservationCheckout({
               </div>
             </div>
 
-            <aside className="surface-card rounded-[34px] border border-app-strong bg-[linear-gradient(180deg,var(--surface-strong)_0%,color-mix(in_srgb,var(--surface-strong)_86%,black_14%)_100%)] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.22)]">
-              <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-[0.16em] text-app-soft">
+            <aside className="surface-card rounded-[28px] border border-app-strong bg-[linear-gradient(180deg,var(--surface-strong)_0%,color-mix(in_srgb,var(--surface-strong)_90%,black_10%)_100%)] p-5">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-app-soft">
                 <Clock3
                   className="h-4 w-4 text-[var(--accent-strong)]"
                   aria-hidden="true"
@@ -410,7 +410,7 @@ export function ReservationCheckout({
               {pending ? (
                 <>
                   <div
-                    className={`mt-5 rounded-[30px] border p-6 ${
+                    className={`mt-5 rounded-[24px] border p-5 ${
                       nearExpiry
                         ? "border-amber-400/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.16),rgba(223,242,164,0.08))]"
                         : "border-[color-mix(in_srgb,var(--accent)_34%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.03))]"
@@ -419,7 +419,7 @@ export function ReservationCheckout({
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-app-soft">
                       Time remaining
                     </p>
-                    <p className="mt-3 font-mono text-5xl font-semibold tracking-tight text-[var(--foreground)]">
+                    <p className="mt-3 font-mono text-4xl font-semibold tracking-tight text-[var(--foreground)]">
                       {countdown}
                     </p>
                     <p className="mt-3 text-sm leading-6 text-app-muted">
@@ -433,7 +433,7 @@ export function ReservationCheckout({
 
               {reservation.status === "confirmed" ? (
                 <>
-                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+                <div className="mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
                     <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
@@ -454,7 +454,7 @@ export function ReservationCheckout({
 
               {reservation.status === "released" ? (
                 <>
-                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
+                <div className="mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
                     <XCircle className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
@@ -475,7 +475,7 @@ export function ReservationCheckout({
 
               {expiredPending ? (
                 <>
-                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
+                  <div className="mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
                     <XCircle className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
@@ -490,20 +490,20 @@ export function ReservationCheckout({
               ) : null}
 
               {actionError ? (
-                <div className="mt-6 rounded-[24px] border border-amber-400/30 bg-[linear-gradient(135deg,rgba(223,242,164,0.12),rgba(190,89,76,0.16))] px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+                <div className="mt-6 rounded-[20px] border border-amber-400/30 bg-[linear-gradient(135deg,rgba(223,242,164,0.1),rgba(190,89,76,0.14))] px-4 py-3 text-sm font-medium text-[var(--foreground)]">
                   {actionError}
                 </div>
               ) : null}
 
               {expiredOnRead ? (
-                <div className="mt-6 rounded-[24px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-[var(--foreground)]">
+                <div className="mt-6 rounded-[20px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-[var(--foreground)]">
                   Reservation expired before confirmation could complete. The
                   hold was released automatically when this page opened.
                 </div>
               ) : null}
 
               {!pending && !actionError ? (
-                <div className="mt-6 rounded-[24px] border border-app-soft bg-app-veil px-4 py-3 text-sm text-app-muted">
+                <div className="mt-6 rounded-[20px] border border-app-soft bg-app-veil px-4 py-3 text-sm text-app-muted">
                   This hold is no longer active. Return to inventory to create a
                   new reservation.
                 </div>
