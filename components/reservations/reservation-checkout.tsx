@@ -483,7 +483,8 @@ export function ReservationCheckout({
                     Reservation expired
                   </p>
                   <p className="mt-3 text-sm leading-6 text-app-muted">
-                    {reservationExpiredErrorMessage}
+                    This hold reached its expiry window before confirmation
+                    could complete.
                   </p>
                 </>
               ) : null}
@@ -494,7 +495,7 @@ export function ReservationCheckout({
                 </div>
               ) : null}
 
-              {expiredOnRead ? (
+              {expiredOnRead && !actionError ? (
                 <div className="mt-6 rounded-[20px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-[var(--foreground)]">
                   {reservationExpiredErrorMessage}
                 </div>
