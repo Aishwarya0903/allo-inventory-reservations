@@ -49,7 +49,9 @@ describe("reservation checkout helpers", () => {
           message: "Reservation expired before it could be confirmed.",
         },
       }),
-    ).toBe("Reservation expired before confirmation could complete.");
+    ).toBe(
+      "Reservation expired before confirmation could complete. Please create a new reservation. (Error 410)",
+    );
   });
 
   it("falls back to the API message for state conflicts", () => {

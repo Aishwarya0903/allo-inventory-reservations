@@ -16,7 +16,7 @@ describe("product listing helpers", () => {
         },
       }),
     ).toBe(
-      "Not enough stock available for this warehouse. Inventory has been refreshed.",
+      "Not enough stock available from this warehouse. You asked for more units than available. (Error 409)",
     );
   });
 

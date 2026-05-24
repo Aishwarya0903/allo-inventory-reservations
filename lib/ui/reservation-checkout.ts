@@ -42,6 +42,9 @@ type ReservationActionErrorInput = {
   error?: ReservationApiError;
 };
 
+export const reservationExpiredErrorMessage =
+  "Reservation expired before confirmation could complete. Please create a new reservation. (Error 410)";
+
 export function parseReservationDetailResponse(
   value: unknown,
 ): ReservationCheckoutApiResponse | null {
@@ -109,7 +112,7 @@ export function getReservationActionErrorMessage(
   }
 
   if (failure.status === 410) {
-    return "Reservation expired before confirmation could complete.";
+    return reservationExpiredErrorMessage;
   }
 
   if (failure.error?.message) {

@@ -6,6 +6,9 @@ type ApiErrorPayload = {
   };
 };
 
+export const insufficientStockErrorMessage =
+  "Not enough stock available from this warehouse. You asked for more units than available. (Error 409)";
+
 type InventorySummaryProduct = {
   stockLevels: {
     warehouse: {
@@ -30,7 +33,7 @@ export function getReserveErrorMessage(error: ApiErrorPayload | null) {
   }
 
   if (error.status === 409 && error.error.code === "NOT_ENOUGH_STOCK") {
-    return "Not enough stock available for this warehouse. Inventory has been refreshed.";
+    return insufficientStockErrorMessage;
   }
 
   return error.error.message || "Unable to reserve inventory right now.";

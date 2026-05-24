@@ -22,6 +22,7 @@ import {
   getReservationActionErrorMessage,
   isPendingReservationExpired,
   parseReservationDetailResponse,
+  reservationExpiredErrorMessage,
   type ReservationCheckoutDetail,
 } from "@/lib/ui/reservation-checkout";
 
@@ -168,7 +169,7 @@ export function ReservationCheckout({
     }
 
     didRefreshExpiredReservation.current = true;
-    setActionError("Reservation expired.");
+    setActionError(reservationExpiredErrorMessage);
     void loadReservation({ background: true });
   }, [isExpired, loadReservation, reservation]);
 
@@ -482,9 +483,7 @@ export function ReservationCheckout({
                     Reservation expired
                   </p>
                   <p className="mt-3 text-sm leading-6 text-app-muted">
-                    Reservation expired before confirmation could complete. The
-                    hold will be released and inventory will return to the
-                    warehouse pool.
+                    {reservationExpiredErrorMessage}
                   </p>
                 </>
               ) : null}
@@ -497,8 +496,7 @@ export function ReservationCheckout({
 
               {expiredOnRead ? (
                 <div className="mt-6 rounded-[20px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-[var(--foreground)]">
-                  Reservation expired before confirmation could complete. The
-                  hold was released automatically when this page opened.
+                  {reservationExpiredErrorMessage}
                 </div>
               ) : null}
 
