@@ -30,7 +30,7 @@ export function getReserveErrorMessage(error: ApiErrorPayload | null) {
   }
 
   if (error.status === 409 && error.error.code === "NOT_ENOUGH_STOCK") {
-    return "Not enough stock available in this warehouse. Live inventory has been refreshed.";
+    return "Not enough stock available for this warehouse. Inventory has been refreshed.";
   }
 
   return error.error.message || "Unable to reserve inventory right now.";

@@ -16,7 +16,7 @@ describe("product listing helpers", () => {
         },
       }),
     ).toBe(
-      "Not enough stock available in this warehouse. Live inventory has been refreshed.",
+      "Not enough stock available for this warehouse. Inventory has been refreshed.",
     );
   });
 

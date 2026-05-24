@@ -52,9 +52,9 @@ function formatTimestamp(timestamp: string | null) {
 function getStatusTone(status: ReservationCheckoutDetail["status"]) {
   switch (status) {
     case "confirmed":
-      return "border-emerald-400/25 bg-emerald-400/10 text-emerald-200";
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-500";
     case "released":
-      return "border-amber-400/25 bg-amber-400/10 text-amber-100";
+      return "border-amber-500/25 bg-amber-500/10 text-amber-500";
     case "pending":
     default:
       return "border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--foreground)]";
@@ -69,7 +69,7 @@ function getStatusLabel(status: ReservationCheckoutDetail["status"]) {
       return "Released";
     case "pending":
     default:
-      return "Pending";
+      return "Pending hold";
   }
 }
 
@@ -155,7 +155,11 @@ export function ReservationCheckout({
       return false;
     }
 
-    return isPendingReservationExpired(reservation.status, reservation.expiresAt, now);
+    return isPendingReservationExpired(
+      reservation.status,
+      reservation.expiresAt,
+      now,
+    );
   }, [now, reservation]);
 
   useEffect(() => {
@@ -173,15 +177,22 @@ export function ReservationCheckout({
     setActionError(null);
 
     try {
-      const response = await fetch(`/api/reservations/${reservationId}/${action}`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        `/api/reservations/${reservationId}/${action}`,
+        {
+          method: "POST",
+        },
+      );
 
       if (!response.ok) {
         const failure = await parseApiFailure(response);
         setActionError(getReservationActionErrorMessage(action, failure));
 
-        if (response.status === 404 || response.status === 410 || response.status === 409) {
+        if (
+          response.status === 404 ||
+          response.status === 410 ||
+          response.status === 409
+        ) {
           await loadReservation({ background: true });
         }
 
@@ -198,10 +209,10 @@ export function ReservationCheckout({
 
   if (isLoading) {
     return (
-      <main className="min-h-screen pb-16 text-[var(--foreground)]">
+      <main className="relative min-h-screen overflow-hidden pb-16 text-[var(--foreground)]">
         <SiteHeader currentPath="reservation" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="surface-card-strong rounded-[36px] p-8 sm:p-10">
+          <div className="cinematic-panel rounded-[40px] p-8 sm:p-10">
             <div className="h-4 w-32 animate-pulse rounded-full bg-white/10" />
             <div className="mt-5 h-14 w-72 animate-pulse rounded-full bg-white/10" />
             <div className="mt-8 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -216,20 +227,20 @@ export function ReservationCheckout({
 
   if (pageError) {
     return (
-      <main className="min-h-screen pb-16 text-[var(--foreground)]">
+      <main className="relative min-h-screen overflow-hidden pb-16 text-[var(--foreground)]">
         <SiteHeader currentPath="reservation" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="surface-card-strong rounded-[36px] border border-rose-400/20 bg-[linear-gradient(135deg,rgba(131,31,52,0.16),rgba(16,20,16,0.08))] p-8 sm:p-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-200">
+          <div className="cinematic-panel rounded-[40px] p-8 sm:p-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-app-soft">
               Reservation unavailable
             </p>
-            <h1 className="font-display mt-4 text-4xl tracking-[-0.03em] text-[var(--foreground)]">
+            <h1 className="font-display mt-4 text-4xl text-[var(--foreground)]">
               {pageError}
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-app-muted sm:text-base">
               The reservation detail could not be loaded from the API. If the hold
-              was just created, return to the inventory surface and retry the
-              flow after the latest product data refreshes.
+              was just created, return to the inventory surface and retry the flow
+              after the latest product data refreshes.
             </p>
             <div className="mt-8">
               <Button asChild variant="outline">
@@ -251,17 +262,40 @@ export function ReservationCheckout({
 
   const countdown = formatReservationCountdown(reservation.expiresAt, now);
   const pending = reservation.status === "pending" && !isExpired;
+  const expiredPending = reservation.status === "pending" && isExpired;
+  const nearExpiry =
+    pending && new Date(reservation.expiresAt).getTime() - now <= 60_000;
   const disableActions = activeAction !== null || !pending;
   const confirmedAt = formatTimestamp(reservation.confirmedAt);
   const releasedAt = formatTimestamp(reservation.releasedAt);
   const expiresAt = formatTimestamp(reservation.expiresAt);
+  const heroCopy =
+    reservation.status === "confirmed"
+      ? {
+          title: "Purchase confirmed.",
+          body: "The hold has been committed and stock was permanently adjusted for this checkout.",
+        }
+      : reservation.status === "released"
+        ? {
+            title: "Hold released.",
+            body: "The reservation is closed and the units are available for checkout allocation again.",
+          }
+        : expiredPending
+          ? {
+              title: "Reservation expired.",
+              body: "This hold reached its expiry window before confirmation could complete.",
+            }
+          : {
+              title: "Checkout hold is active.",
+              body: "Confirm on payment success, or cancel the hold to release units back to the warehouse pool.",
+            };
 
   return (
-    <main className="min-h-screen pb-16 text-[var(--foreground)]">
+    <main className="relative min-h-screen overflow-hidden pb-16 text-[var(--foreground)]">
       <SiteHeader currentPath="reservation" />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <section className="surface-card-strong overflow-hidden rounded-[36px] border border-app-strong">
+        <section className="cinematic-panel rounded-[40px]">
           <div className="grid gap-6 border-b border-app-soft px-6 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:px-10 lg:py-10">
             <div className="max-w-4xl">
               <div className="mb-5">
@@ -275,13 +309,11 @@ export function ReservationCheckout({
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-app-soft">
                 Checkout hold
               </p>
-              <h1 className="font-display mt-4 text-4xl leading-[0.96] tracking-[-0.03em] text-[var(--foreground)] sm:text-5xl">
-                Complete the reservation before the hold expires.
+              <h1 className="font-display mt-4 text-4xl leading-[0.98] text-[var(--foreground)] sm:text-5xl">
+                {heroCopy.title}
               </h1>
               <p className="mt-5 max-w-3xl text-sm leading-7 text-app-muted sm:text-base">
-                This screen manages the short inventory hold between checkout
-                initiation and payment completion. Confirming commits the stock.
-                Cancelling or expiry releases it back to the warehouse pool.
+                {heroCopy.body}
               </p>
             </div>
 
@@ -296,16 +328,16 @@ export function ReservationCheckout({
 
           <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_360px] lg:px-10 lg:py-8">
             <div className="grid gap-6">
-              <div className="surface-card rounded-[30px] p-6">
+              <div className="glass-row rounded-[32px] p-6">
                 <div className="flex items-start gap-4">
-                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[22px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.18),rgba(222,129,99,0.16))] text-[var(--foreground)]">
+                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[22px] border border-app-soft bg-[linear-gradient(135deg,rgba(223,242,164,0.2),rgba(222,129,99,0.16))] text-[var(--foreground)] shadow-[0_20px_60px_rgba(0,0,0,0.16)]">
                     <Store className="h-6 w-6" aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
                       Product
                     </p>
-                    <h2 className="font-display mt-3 text-3xl tracking-[-0.02em] text-[var(--foreground)]">
+                    <h2 className="font-display mt-3 text-3xl text-[var(--foreground)]">
                       {reservation.product.name}
                     </h2>
                     <p className="mt-2 font-mono text-sm text-app-soft">
@@ -319,7 +351,7 @@ export function ReservationCheckout({
               </div>
 
               <div className="grid gap-6 lg:grid-cols-2">
-                <div className="surface-card rounded-[30px] p-6">
+                <div className="glass-row rounded-[32px] p-6">
                   <div className="flex items-start gap-4">
                     <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-app-soft bg-app-veil text-[var(--foreground)]">
                       <Warehouse className="h-5 w-5" aria-hidden="true" />
@@ -333,13 +365,14 @@ export function ReservationCheckout({
                       </p>
                       <p className="mt-2 inline-flex items-center gap-2 text-sm text-app-muted">
                         <MapPin className="h-4 w-4" aria-hidden="true" />
-                        {reservation.warehouse.code} · {reservation.warehouse.city}
+                        {reservation.warehouse.code} ·{" "}
+                        {reservation.warehouse.city}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="surface-card rounded-[30px] p-6">
+                <div className="glass-row rounded-[32px] p-6">
                   <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-app-soft">
                     Hold details
                   </p>
@@ -365,15 +398,24 @@ export function ReservationCheckout({
               </div>
             </div>
 
-            <aside className="surface-card rounded-[32px] border border-app-strong bg-[linear-gradient(180deg,var(--surface-strong)_0%,color-mix(in_srgb,var(--surface-strong)_86%,black_14%)_100%)] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.22)]">
+            <aside className="surface-card rounded-[34px] border border-app-strong bg-[linear-gradient(180deg,var(--surface-strong)_0%,color-mix(in_srgb,var(--surface-strong)_86%,black_14%)_100%)] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.22)]">
               <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-[0.16em] text-app-soft">
-                <Clock3 className="h-4 w-4 text-[var(--accent-strong)]" aria-hidden="true" />
+                <Clock3
+                  className="h-4 w-4 text-[var(--accent-strong)]"
+                  aria-hidden="true"
+                />
                 Hold status
               </div>
 
               {pending ? (
                 <>
-                  <div className="mt-5 rounded-[28px] border border-[color-mix(in_srgb,var(--accent)_34%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.03))] p-6">
+                  <div
+                    className={`mt-5 rounded-[30px] border p-6 ${
+                      nearExpiry
+                        ? "border-amber-400/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.16),rgba(223,242,164,0.08))]"
+                        : "border-[color-mix(in_srgb,var(--accent)_34%,transparent)] bg-[linear-gradient(135deg,rgba(223,242,164,0.16),rgba(255,255,255,0.03))]"
+                    }`}
+                  >
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-app-soft">
                       Time remaining
                     </p>
@@ -381,9 +423,9 @@ export function ReservationCheckout({
                       {countdown}
                     </p>
                     <p className="mt-3 text-sm leading-6 text-app-muted">
-                      Confirming now converts the held units into a completed
-                      stock decrement. If the timer reaches zero first, the hold
-                      will be released automatically.
+                      {nearExpiry
+                        ? "This hold is close to expiry. Confirm the purchase now or let the hold release automatically."
+                        : "Confirming now converts the held units into a completed stock decrement. If the timer reaches zero first, the hold will be released automatically."}
                     </p>
                   </div>
                 </>
@@ -391,15 +433,15 @@ export function ReservationCheckout({
 
               {reservation.status === "confirmed" ? (
                 <>
-                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
                     <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
-                    Reservation confirmed
+                    Purchase confirmed
                   </p>
                   <p className="mt-3 text-sm leading-6 text-app-muted">
-                    Inventory has been committed for checkout completion. This
-                    hold is final and no longer actionable from this screen.
+                    Total and reserved stock were permanently adjusted for this
+                    successful checkout. This hold is final.
                   </p>
                   {confirmedAt ? (
                     <p className="mt-4 inline-flex items-center gap-2 text-sm text-app-soft">
@@ -412,11 +454,11 @@ export function ReservationCheckout({
 
               {reservation.status === "released" ? (
                 <>
-                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-300">
+                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
                     <XCircle className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
-                    Reservation released
+                    Hold released
                   </p>
                   <p className="mt-3 text-sm leading-6 text-app-muted">
                     This hold is no longer active. Reserved units have been
@@ -431,16 +473,32 @@ export function ReservationCheckout({
                 </>
               ) : null}
 
+              {expiredPending ? (
+                <>
+                  <div className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
+                    <XCircle className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
+                    Reservation expired
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-app-muted">
+                    Reservation expired before confirmation could complete. The
+                    hold will be released and inventory will return to the
+                    warehouse pool.
+                  </p>
+                </>
+              ) : null}
+
               {actionError ? (
-                <div className="mt-6 rounded-[24px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                <div className="mt-6 rounded-[24px] border border-amber-400/30 bg-[linear-gradient(135deg,rgba(223,242,164,0.12),rgba(190,89,76,0.16))] px-4 py-3 text-sm font-medium text-[var(--foreground)]">
                   {actionError}
                 </div>
               ) : null}
 
               {expiredOnRead ? (
-                <div className="mt-6 rounded-[24px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-                  This reservation expired and was released automatically when the
-                  checkout hold page was opened.
+                <div className="mt-6 rounded-[24px] border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-[var(--foreground)]">
+                  Reservation expired before confirmation could complete. The
+                  hold was released automatically when this page opened.
                 </div>
               ) : null}
 
@@ -459,7 +517,10 @@ export function ReservationCheckout({
                   size="lg"
                 >
                   {activeAction === "confirm" ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <RefreshCw
+                      className="h-4 w-4 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                   )}
@@ -473,11 +534,14 @@ export function ReservationCheckout({
                   size="lg"
                 >
                   {activeAction === "release" ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <RefreshCw
+                      className="h-4 w-4 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <XCircle className="h-4 w-4" aria-hidden="true" />
                   )}
-                  Cancel reservation
+                  Cancel hold
                 </Button>
               </div>
 
