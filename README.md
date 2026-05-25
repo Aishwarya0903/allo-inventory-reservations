@@ -15,7 +15,7 @@ availableUnits = totalUnits - reservedUnits
 ## Live Demo / Deliverables
 
 - GitHub repository: https://github.com/Aishwarya0903/allo-inventory-reservations
-- Live deployment: `<add Vercel URL>`
+- Live deployment: https://allo-inventory-reservations-ten.vercel.app
 
 ## Assignment Requirement Coverage
 
