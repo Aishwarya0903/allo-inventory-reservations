@@ -2,43 +2,254 @@
 
 ## Project Overview
 
-This repository contains a checkout-time inventory reservation workflow for Allo Health's multi-warehouse fulfillment platform.
+Allo Inventory Reservations is a completed take-home implementation of a checkout-time inventory hold system for multi-warehouse retail and D2C fulfillment.
 
-The goal is to avoid overselling while payment is in progress without making abandoned carts permanently reduce available inventory.
+The app reserves stock when a customer reaches checkout, confirms the reservation after payment succeeds, releases it when payment fails or is cancelled, and releases expired holds automatically. The core goal is to avoid overselling when two checkout requests race for the same final unit without making abandoned carts permanently reduce inventory.
 
-## Assignment Focus
+Available stock is always calculated as:
 
-The current submission covers the core reservation path: list live stock by warehouse, place a temporary hold, confirm or release that hold, and clean up expired reservations safely.
+```text
+availableUnits = totalUnits - reservedUnits
+```
+
+## Live Demo / Deliverables
+
+- GitHub repository: https://github.com/Aishwarya0903/allo-inventory-reservations
+- Live deployment: `<add Vercel URL>`
+
+## Assignment Requirement Coverage
+
+| Requirement | Status |
+| --- | --- |
+| Next.js App Router app | Implemented |
+| Products and warehouses | Implemented |
+| Stock levels per product and warehouse | Implemented |
+| `totalUnits` and `reservedUnits` on stock rows | Implemented |
+| Reservation statuses: `pending`, `confirmed`, `released` | Implemented |
+| Reservation expiry time with `expiresAt` | Implemented |
+| `GET /api/products` | Implemented |
+| `GET /api/warehouses` | Implemented |
+| `POST /api/reservations` with HTTP `409` for insufficient stock | Implemented |
+| `POST /api/reservations/:id/confirm` with HTTP `410` for expired holds | Implemented |
+| `POST /api/reservations/:id/release` | Implemented |
+| Product listing frontend | Implemented |
+| Checkout page with live countdown | Implemented |
+| Confirm purchase action | Implemented |
+| Cancel hold action | Implemented |
+| Visible `409` and `410` UI errors | Implemented |
+| Expiry cleanup | Implemented with lazy cleanup and a protected cron endpoint |
+| Hosted Postgres-ready setup | Implemented with Prisma Postgres datasource |
+| README setup, deployment, and trade-offs | Implemented |
+| Optional idempotency bonus for reserve and confirm | Implemented with Upstash Redis when configured |
 
 ## Tech Stack
 
 - Next.js App Router
 - TypeScript
-- Prisma with a Postgres-ready datasource
+- Prisma
+- Neon Postgres / hosted Postgres
+- Upstash Redis REST for optional idempotency
 - Zod
 - Tailwind CSS
-- shadcn-style UI utilities
 - Vitest
-- ESLint
+- Vercel
 
-## Data Model
+## Architecture / Core Flow
 
-The Prisma schema is Postgres-ready and models the inventory domain directly:
+The data model keeps physical stock and active checkout holds separate:
 
 - `Product`: sellable item, keyed by unique `sku`
 - `Warehouse`: fulfillment location, keyed by unique `code`
-- `StockLevel`: inventory for one product in one warehouse
-- `Reservation`: checkout hold for a product and warehouse, with `pending`, `confirmed`, or `released` status
+- `StockLevel`: stock for one product at one warehouse
+- `Reservation`: checkout hold for one product, warehouse, and quantity
 
-`StockLevel` stores both `totalUnits` and `reservedUnits`. Keeping reserved units separate means payment-time holds can temporarily reduce availability without pretending the physical stock has already left the warehouse.
+Reservation lifecycle:
 
-Available stock is calculated as:
+1. Reserve
+   - Validates `productId`, `warehouseId`, and a positive integer `quantity`.
+   - Increments `StockLevel.reservedUnits`.
+   - Creates a `pending` reservation with `expiresAt`.
+   - Does not decrement `totalUnits`.
 
-```text
-totalUnits - reservedUnits
+2. Confirm
+   - Used after payment succeeds.
+   - Decrements both `totalUnits` and `reservedUnits`.
+   - Marks the reservation `confirmed`.
+   - If the hold expired first, releases it and returns an expiry error.
+
+3. Release
+   - Used when payment fails or the customer cancels.
+   - Decrements `reservedUnits` only.
+   - Marks the reservation `released`.
+
+4. Expiry
+   - Expired pending reservations are released by lazy cleanup and by the protected cron endpoint.
+
+## Concurrency Strategy
+
+Reservation creation is the most important part of the assignment. It uses a Prisma transaction with an atomic guarded Postgres update:
+
+```sql
+UPDATE "StockLevel"
+SET
+  "reservedUnits" = "reservedUnits" + quantity,
+  "updatedAt" = NOW()
+WHERE
+  "productId" = productId
+  AND "warehouseId" = warehouseId
+  AND ("totalUnits" - "reservedUnits") >= quantity
 ```
 
-The schema enforces uniqueness for one stock row per product and warehouse. Application code enforces stock invariants such as `reservedUnits <= totalUnits` before writes and inside reservation transactions.
+The guarded update is the concurrency boundary. `reservedUnits` is incremented only if there is enough availability at the database row at the moment the write executes. If the update affects zero rows, the service raises `NOT_ENOUGH_STOCK`, and the API maps it to HTTP `409 Conflict`.
+
+This prevents the last-unit double-sell race: when two simultaneous requests try to reserve the last available unit, only one update can win. The losing request receives the existing not-enough-stock behavior.
+
+A real Postgres integration test exists for this case:
+
+```bash
+TEST_DATABASE_URL="postgresql://..." npm run test:integration
+```
+
+`npm run test:integration` runs `tests/reservation-concurrency.integration.test.ts` when `TEST_DATABASE_URL` is configured. The normal unit test command excludes integration tests, so `npm run test` does not require hosted Postgres.
+
+## API Reference
+
+### `GET /api/products`
+
+Runs lazy cleanup for expired pending reservations, then returns products with warehouse stock.
+
+Each stock row includes:
+
+- `totalUnits`
+- `reservedUnits`
+- `availableUnits`
+- warehouse details
+
+### `GET /api/warehouses`
+
+Returns all warehouses ordered by code.
+
+### `POST /api/reservations`
+
+Creates a pending reservation.
+
+Request body:
+
+```json
+{
+  "productId": "product_id",
+  "warehouseId": "warehouse_id",
+  "quantity": 1
+}
+```
+
+Important responses:
+
+- `201 Created`: reservation created
+- `400 Bad Request`: invalid JSON or invalid request body
+- `409 Conflict`: insufficient stock
+- `503 Service Unavailable`: `Idempotency-Key` was provided but Upstash Redis is not configured
+
+### `GET /api/reservations/:id`
+
+Returns reservation details with product and warehouse context.
+
+If the reservation is pending and already expired, the read path releases it first and returns the released state with `expiredOnRead: true`.
+
+### `POST /api/reservations/:id/confirm`
+
+Confirms a pending checkout hold after payment success.
+
+Important responses:
+
+- `200 OK`: reservation confirmed, or already confirmed
+- `404 Not Found`: reservation does not exist
+- `409 Conflict`: reservation is already released or stock cannot be confirmed safely
+- `410 Gone`: reservation expired before confirmation
+- `503 Service Unavailable`: `Idempotency-Key` was provided but Upstash Redis is not configured
+
+### `POST /api/reservations/:id/release`
+
+Releases a pending checkout hold when checkout is cancelled or payment fails.
+
+Important responses:
+
+- `200 OK`: reservation released, or already released
+- `404 Not Found`: reservation does not exist
+- `409 Conflict`: reservation is already confirmed
+
+### `GET /api/cron/release-expired`
+
+Protected endpoint for scheduled expiry cleanup.
+
+Security behavior:
+
+- Requires `Authorization: Bearer <CRON_SECRET>`.
+- Returns `401 Unauthorized` when the bearer token is missing or invalid.
+- Returns `500` when `CRON_SECRET` is missing on the server.
+
+Success response:
+
+```json
+{
+  "releasedCount": 3,
+  "checkedAt": "2026-05-24T00:00:00.000Z"
+}
+```
+
+## Idempotency Bonus
+
+Idempotency applies to:
+
+- `POST /api/reservations`
+- `POST /api/reservations/:id/confirm`
+
+It intentionally does not wrap `POST /api/reservations/:id/release`, because the assignment bonus focuses on reserve and confirm retries.
+
+Behavior:
+
+- Without `Idempotency-Key`, the endpoints behave normally.
+- With `Idempotency-Key` and Upstash Redis configured, the first JSON response is stored and replayed for retries.
+- Reserve requests include a hash of the validated body, so the same key with the same body returns the original response.
+- Reusing the same reserve key with a different body returns `422 Unprocessable Entity`.
+- If `Idempotency-Key` is provided but Upstash Redis env vars are missing, the endpoint returns `503` and does not perform the side effect.
+
+Required Upstash env vars:
+
+```bash
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+The implementation does not use an in-memory fallback, because that would make retry behavior misleading in production.
+
+## Expiry Strategy
+
+Expiry is handled in two layers.
+
+Lazy cleanup:
+
+- `GET /api/products` releases expired pending reservations before listing inventory.
+- `GET /api/reservations/:id` releases an expired pending hold before returning reservation detail.
+
+Scheduled cleanup:
+
+- `GET /api/cron/release-expired` calls `cleanupExpiredReservations`.
+- The route requires `Authorization: Bearer <CRON_SECRET>`.
+- `vercel.json` schedules the endpoint once per day:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/release-expired",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
+```
+
+Vercel Hobby cron runs daily, so this repository uses a daily schedule that deploys on the Hobby plan. Lazy cleanup keeps the demo behavior correct between daily sweeps. On Vercel Pro, or with a separate worker, the same endpoint could be called more frequently.
 
 ## Local Development
 
@@ -48,13 +259,58 @@ Install dependencies:
 npm install
 ```
 
-Start the development server:
+Copy the example env file:
 
 ```bash
+cp .env.example .env
+```
+
+Set at least:
+
+```bash
+DATABASE_URL=
+DIRECT_URL=
+```
+
+Generate Prisma Client:
+
+```bash
+npm run db:generate
+```
+
+For local development against a development database:
+
+```bash
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
-Run validation checks:
+For an already-managed hosted database, deploy migrations instead:
+
+```bash
+npm run db:deploy
+npm run db:seed
+npm run dev
+```
+
+## Environment Variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Runtime Postgres connection string for Prisma Client |
+| `DIRECT_URL` | Yes | Direct Postgres connection string for Prisma migrations |
+| `TEST_DATABASE_URL` | Integration tests only | Isolated hosted Postgres database for `npm run test:integration` |
+| `RESERVATION_TTL_MINUTES` | Recommended | Checkout hold lifetime; defaults to `10` when omitted |
+| `CRON_SECRET` | Cron endpoint | Bearer secret for `GET /api/cron/release-expired` |
+| `UPSTASH_REDIS_REST_URL` | Idempotency only | Upstash Redis REST URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Idempotency only | Upstash Redis REST token |
+
+Upstash variables are required only when clients send `Idempotency-Key`. If a key is sent without Upstash configured, the API returns `503` before performing the mutation.
+
+## Testing
+
+Command-line checks:
 
 ```bash
 npm run lint
@@ -63,328 +319,70 @@ npm run test
 npm run build
 ```
 
-Prisma commands:
+Hosted Postgres integration test:
 
 ```bash
-npm run db:generate
-npm run db:migrate
-npm run db:deploy
-npm run db:seed
-npm run db:studio
-TEST_DATABASE_URL="..." npm run test:integration
-```
-
-## Environment Variables
-
-Copy `.env.example` to `.env` for local development and fill values as needed.
-
-```bash
-DATABASE_URL=
-DIRECT_URL=
-TEST_DATABASE_URL=
-RESERVATION_TTL_MINUTES=10
-CRON_SECRET=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-```
-
-No Supabase or hosted Postgres connection is required to inspect or build the app. Database commands need valid `DATABASE_URL` and `DIRECT_URL` values.
-
-## Hosted Postgres Setup
-
-The application is designed for hosted Postgres providers such as Supabase and Neon. The Prisma schema and reservation service do not rely on SQLite or any local-only fallback.
-
-Recommended environment setup:
-
-- `DATABASE_URL`: the main application connection string used by Next.js and Prisma Client at runtime. On Supabase or Neon, this can be the pooled connection string if that is what your deployment platform recommends for application traffic.
-- `DIRECT_URL`: a direct Postgres connection string for Prisma migrations and schema operations. On Supabase or Neon, this should be the non-pooled connection when the provider exposes a separate direct endpoint.
-- `TEST_DATABASE_URL`: an isolated hosted Postgres database or branch used only for the integration harness. This should point at a database where the Prisma schema has been applied and where test data can be created and deleted safely.
-- `CRON_SECRET`: a random secret used to protect the production cron endpoint that releases expired reservations.
-- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional Upstash Redis REST credentials used only for idempotency on the reserve and confirm endpoints.
-
-Typical setup flow:
-
-```bash
-npm run db:generate
-npm run db:migrate
-npm run db:seed
 TEST_DATABASE_URL="postgresql://..." npm run test:integration
 ```
 
-For shared hosted environments, prefer running the integration harness against a dedicated preview database, branch database, or disposable test project rather than a developer’s primary dataset.
+The unit test suite covers:
+
+- reservation status constants and request validation
+- stock availability and invariant helpers
+- API error mapping
+- reservation service state transitions
+- guarded reserve behavior and Prisma write-conflict mapping
+- checkout countdown and reservation detail parsing helpers
+- idempotency helper behavior
+- cron authorization helper behavior
+
+The integration test covers real Postgres behavior for:
+
+- two concurrent `reserveInventory` calls competing for the final unit
+- confirming an already expired reservation and releasing `reservedUnits`
+
+The integration test is intentionally separate because true concurrency behavior should be validated against real Postgres, not an in-memory mock.
 
 ## Deployment
 
-The app is prepared for deployment to Vercel with a hosted Postgres database.
+The app is prepared for Vercel with hosted Postgres.
+
+Recommended deployment stack:
+
+- Vercel for the Next.js app and daily cron
+- Neon Postgres or another hosted Postgres provider
+- Upstash Redis if the idempotency bonus should be enabled
+
+Deployment steps:
+
+1. Create a hosted Postgres database or branch.
+2. Set Vercel env vars: `DATABASE_URL`, `DIRECT_URL`, `RESERVATION_TTL_MINUTES`, and `CRON_SECRET`.
+3. Optionally set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+4. Run `npm run db:deploy` against the hosted database.
+5. Run `npm run db:seed` against the hosted database.
+6. Deploy or redeploy the Vercel app after env var changes.
+7. Verify the live product listing, reserve flow, confirm flow, cancel flow, and expired confirm behavior.
+
+`postinstall` runs `prisma generate`, so Vercel builds generate Prisma Client before the Next.js build. Migrations and seed are intentionally separate operational steps, not hidden inside the app build.
+
+## Manual Verification Checklist
+
+- Product inventory loads from the database.
+- Reserve succeeds for an available warehouse row.
+- Confirm purchase succeeds for an active reservation.
+- Cancel hold succeeds for an active reservation.
+- A quantity above availability shows the visible `409` message.
+- Confirming an expired reservation shows the visible `410` message.
+- Theme toggle works.
+- Light/dark preference persists after refresh.
+- Idempotency works for reserve and confirm when Upstash env vars are configured.
+
+## Trade-offs / Future Improvements
+
+- Vercel Hobby cron runs daily. A production deployment could use Vercel Pro or a separate worker for more frequent background cleanup.
+- Real concurrency validation requires a hosted Postgres test database via `TEST_DATABASE_URL`; normal unit tests do not prove database locking behavior.
+- Authentication, tenant isolation, and role-based admin access are out of scope for this assignment.
+- Payment gateway integration is intentionally simulated through confirm/release endpoints.
+- The release endpoint is not idempotency-wrapped because the bonus scope focused on reserve and confirm.
+- Production hardening would add structured logging, metrics, tracing, alerting, and operational admin tooling.
 
-### Vercel runtime expectations
-
-- Vercel builds the Next.js app and runs the `postinstall` script, which now calls `prisma generate` so the deployed bundle always contains a current Prisma Client.[^prisma-vercel]
-- Database migrations are not run automatically during the app build. Apply them separately against the hosted database with `npm run db:deploy`.
-- Seeding is also a separate step. Run `npm run db:seed` from a shell that points at the hosted database after the schema is deployed.
-
-### Required Vercel environment variables
-
-Set these in the Vercel project before promoting the deployment:
-
-- `DATABASE_URL`: application runtime connection string. For Supabase or Neon, this can be the pooled URL if that is the provider’s recommended runtime connection.
-- `DIRECT_URL`: direct Postgres connection string used by Prisma migrations and schema operations.
-- `RESERVATION_TTL_MINUTES`: checkout hold lifetime in minutes. The default local example is `10`.
-- `CRON_SECRET`: random bearer secret used by the cron endpoint that releases expired reservations.
-
-Optional but useful outside Vercel:
-
-- `TEST_DATABASE_URL`: hosted Postgres branch or test database used by the integration harness.
-- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: enable the idempotency bonus when you want retry-safe reserve and confirm calls.
-
-### Hosted Postgres deployment flow
-
-For an initial deployment, the safe order is:
-
-```bash
-npm run db:generate
-npm run db:deploy
-npm run db:seed
-```
-
-After the database is ready, deploy the application to Vercel. On later schema changes, run `npm run db:deploy` again before or alongside the rollout.
-
-### Cron behavior on Vercel
-
-The repository includes [vercel.json](/Users/yeswanth/Downloads/Projects/allo-inventory-reservations/vercel.json), which configures a cron invocation for:
-
-- `GET /api/cron/release-expired`
-
-For Vercel Hobby, cron jobs run daily. The checked-in schedule uses a once-daily sweep at `03:00 UTC` so the project deploys cleanly on the Hobby plan:
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/release-expired",
-      "schedule": "0 3 * * *"
-    }
-  ]
-}
-```
-
-Vercel will send an HTTP `GET` request to that route. When `CRON_SECRET` is configured on the project, Vercel sends it as a bearer token in the `Authorization` header, and the route rejects requests that do not match.[^vercel-cron]
-
-The lower Hobby cron frequency does not leave the app relying on a daily cleanup alone. Expired holds are still released lazily during product reads and reservation-detail reads, so stale pending reservations do not stay visible until the cron sweep runs.
-
-If you deploy this same project on Vercel Pro, you can increase the cron frequency to run the same endpoint more often without changing reservation business logic.
-
-### Deployment checklist
-
-1. Create a hosted Postgres database or branch in Supabase, Neon, or an equivalent provider.
-2. Set `DATABASE_URL`, `DIRECT_URL`, `RESERVATION_TTL_MINUTES`, and `CRON_SECRET` in the Vercel project.
-3. Run `npm run db:deploy` against the hosted database.
-4. Run `npm run db:seed` against the hosted database.
-5. Deploy the app to Vercel.
-6. Verify the live product listing loads from the hosted database.
-7. Verify a reservation can be created from the product listing.
-8. Verify confirm succeeds for an active reservation.
-9. Verify cancel succeeds for an active reservation.
-10. Verify confirming an expired reservation returns HTTP `410`.
-
-### Post-deploy verification
-
-After deployment, the core flow to verify is:
-
-- the product listing page loads real inventory from the hosted database
-- reserving from a warehouse row succeeds and navigates to the reservation detail page
-- confirming an active reservation succeeds and moves the reservation to `confirmed`
-- cancelling an active reservation succeeds and moves the reservation to `released`
-- confirming an expired reservation returns `410 Gone`
-
-If you want to verify the real database concurrency path before production traffic, run:
-
-```bash
-TEST_DATABASE_URL="postgresql://..." npm run test:integration
-```
-
-That remains the honest proof for the last-unit race condition against real Postgres.
-
-## Reservation Flow
-
-When a user proceeds to checkout, the API validates the request, calculates available stock for the selected product and warehouse, and creates a pending reservation for a short TTL window.
-
-If payment succeeds, the reservation will be confirmed and stock will be permanently decremented. If payment fails or the hold expires, the reservation will be released.
-
-## Reservation Service
-
-The reservation service lives in `lib/domain/reservation-service.ts`. It is intentionally separate from route handlers so the critical stock behavior can be tested directly before adding HTTP concerns.
-
-Current service behavior:
-
-- `reserveInventory` validates quantity, runs a transaction, atomically increments `reservedUnits`, and creates a pending reservation with an expiry timestamp.
-- `confirmReservation` handles idempotent confirmed reservations, rejects released reservations, releases expired pending reservations, and confirms active pending reservations by decrementing both `totalUnits` and `reservedUnits`.
-- `releaseReservation` releases pending reservations by decrementing only `reservedUnits`, returns already released reservations idempotently, and rejects confirmed reservations.
-- `cleanupExpiredReservations` finds expired pending reservations and releases them without allowing `reservedUnits` to go negative.
-
-## API Routes
-
-The Next.js route handlers are intentionally thin and live under `app/api/`.
-
-- `GET /api/products` runs lazy cleanup for expired reservations before reading products, then returns products with warehouse-level `totalUnits`, `reservedUnits`, and computed `availableUnits`.
-- `GET /api/warehouses` returns the warehouse list.
-- `GET /api/reservations/[id]` returns a reservation with product and warehouse details. If a pending reservation has already expired, the read path releases it first and returns the released state with an `expiredOnRead` flag.
-- `GET /api/cron/release-expired` runs a production-safe expiry cleanup sweep when called with `Authorization: Bearer <CRON_SECRET>`.
-- `POST /api/reservations` validates the JSON body with Zod and creates a pending reservation.
-- `POST /api/reservations/[id]/confirm` confirms a reservation or returns an expiry/state error.
-- `POST /api/reservations/[id]/release` releases a reservation or returns a state error.
-
-Idempotency support is optional and applies only to:
-
-- `POST /api/reservations`
-- `POST /api/reservations/[id]/confirm`
-
-If the client omits `Idempotency-Key`, both endpoints behave normally. If the client sends `Idempotency-Key` and Upstash Redis is configured, the API stores the first response for a short TTL and replays it on retries instead of repeating the side effect. If the client sends `Idempotency-Key` but Redis is not configured, the API returns `503 Service Unavailable` and does not execute the mutation.
-
-Error behavior is explicit:
-
-- `NOT_ENOUGH_STOCK` maps to HTTP `409 Conflict`
-- invalid reservation state errors also map to HTTP `409 Conflict`
-- `RESERVATION_EXPIRED` maps to HTTP `410 Gone`
-- `RESERVATION_NOT_FOUND` maps to HTTP `404 Not Found`
-- invalid JSON or invalid request bodies map to HTTP `400 Bad Request`
-- idempotency with missing storage maps to HTTP `503 Service Unavailable`
-- reusing an idempotency key with a different reserve request body maps to HTTP `422 Unprocessable Entity`
-
-## Product Listing Flow
-
-The home page acts as the reservation entry point.
-
-- It fetches `GET /api/products` and shows live stock by warehouse.
-- Each warehouse row exposes `totalUnits`, `reservedUnits`, and `availableUnits`.
-- Users can choose a quantity and attempt a reservation directly from the row.
-- A `409 Conflict` response is shown as a visible "Not enough stock available." message.
-- Successful reservations navigate to `/reservations/[id]`.
-- The reservation detail page fetches the active hold, shows the product and warehouse context, and keeps a live countdown running while the reservation is pending.
-- Confirming the hold calls `POST /api/reservations/[id]/confirm` and updates the page to the confirmed state without a manual refresh.
-- Cancelling the hold calls `POST /api/reservations/[id]/release` and updates the page to the released state without a manual refresh.
-- If the hold expires before confirmation, the UI shows a visible expired message and reflects the released state after the API syncs.
-
-The product listing refreshes inventory after a failed stock conflict so the user sees the latest available units after the backend rejects the request.
-
-## Idempotency Bonus
-
-The reserve and confirm mutations support retry-safe behavior through the `Idempotency-Key` request header.
-
-### Supported endpoints
-
-- `POST /api/reservations`
-- `POST /api/reservations/[id]/confirm`
-
-Release is intentionally not wired into idempotency yet. The bonus scope stays focused on the mutation paths most likely to be retried by clients during checkout.
-
-### How it works
-
-- No `Idempotency-Key` header: the endpoint behaves normally.
-- `Idempotency-Key` header present but Upstash Redis env vars missing: the endpoint returns `503` and does not perform the side effect.
-- `Idempotency-Key` header present and Upstash Redis configured:
-  - the server scopes the key to the endpoint
-  - for reserve, it also hashes the validated request body
-  - if a stored response already exists, the server returns the original status and body
-  - if the same reserve key is reused with a different body, the server returns `422`
-
-### Required Redis env vars
-
-```bash
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-```
-
-The implementation uses Upstash Redis REST only when these values are present. It does not fall back to an in-memory or local-only store.
-
-## Concurrency Strategy
-
-The core reservation write uses a Postgres guarded update inside a Prisma transaction:
-
-```sql
-UPDATE "StockLevel"
-SET "reservedUnits" = "reservedUnits" + quantity
-WHERE "productId" = productId
-  AND "warehouseId" = warehouseId
-  AND ("totalUnits" - "reservedUnits") >= quantity
-```
-
-That single database statement is the concurrency boundary. If two checkout attempts race for the last available unit, Postgres can only let one statement update the row once availability no longer satisfies the condition. The losing request gets a `NOT_ENOUGH_STOCK` domain error, which the API maps to HTTP `409`.
-
-When two simultaneous requests try to reserve the last available unit of the same SKU, exactly one request should succeed and the other should receive a conflict response.
-
-Unit tests cover the guarded update shape and service state transitions. True concurrency correctness is only validated against real Postgres. The integration harness in `tests/reservation-concurrency.integration.test.ts` is skipped unless `TEST_DATABASE_URL` is set and the target database already has the Prisma schema applied.
-
-That integration harness covers two important Postgres-backed cases:
-
-- two simultaneous `reserveInventory` calls competing for the last unit, where exactly one must succeed and the other must fail with `NOT_ENOUGH_STOCK`
-- confirming an already expired pending reservation, where the service must raise `RESERVATION_EXPIRED` and release `reservedUnits` back to stock
-
-The checkout UI tests cover countdown formatting, expired-state detection, and the error messages shown for `404`, `409`, and `410` reservation responses. They do not try to simulate browser-level timing or database concurrency in-memory.
-
-## Expiry Strategy
-
-Expired reservations are handled in two layers:
-
-- Lazy cleanup on user-facing reads:
-  - `GET /api/products` releases expired pending reservations before listing inventory.
-  - `GET /api/reservations/[id]` releases an expired pending hold before returning reservation detail.
-- Scheduled cleanup for production:
-  - `GET /api/cron/release-expired` calls `cleanupExpiredReservations`.
-  - The route requires `Authorization: Bearer <CRON_SECRET>`.
-  - If `CRON_SECRET` is missing on the server, the endpoint returns a `500` configuration error rather than silently running unsecured.
-
-For Vercel deployments, the intended setup is:
-
-1. Add `CRON_SECRET` as a project environment variable.
-2. Add a cron entry in `vercel.json` that targets the route.
-
-Example:
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/release-expired",
-      "schedule": "0 3 * * *"
-    }
-  ]
-}
-```
-
-Vercel will invoke the configured path with an HTTP `GET` request, and when `CRON_SECRET` is configured on the project it will send the bearer token in the `Authorization` header for the route to verify.[^vercel-cron]
-
-On Vercel Hobby, that cron should stay daily. The app still performs lazy cleanup on `GET /api/products` and `GET /api/reservations/[id]`, so expired holds are released during normal reads even between scheduled sweeps. On Vercel Pro, the same endpoint can be scheduled more frequently if you want tighter background cleanup.
-
-The scaffold includes `RESERVATION_TTL_MINUTES`, `CRON_SECRET`, and Upstash placeholders for future deployment-friendly expiry support.
-
-## Current Status
-
-Complete:
-
-- Root-level Next.js App Router scaffold
-- TypeScript, Tailwind CSS, ESLint, and Vitest setup
-- Prisma client helper using the local-development `globalThis` pattern
-- Postgres-ready Prisma models for products, warehouses, stock levels, and reservations
-- Prisma seed file with demo retail inventory across multiple warehouses
-- Reservation status constants and TTL parsing helper
-- Stock availability and invariant helpers
-- Reservation service with typed domain errors
-- Unit coverage for guarded reserve behavior, confirm/release transitions, and expiry cleanup
-- Hosted-Postgres integration harness for last-unit concurrency and expired confirmation behavior
-- Product listing UI backed by live API routes
-- Reserve flow from warehouse rows into a real reservation detail checkout screen
-- Polished dark/light UI for inventory operations and checkout holds
-- Reservation detail API read route with expiry-aware read behavior
-- Confirm and release actions from the checkout hold page
-- Protected cron endpoint for scheduled expiry cleanup
-- Optional Upstash-backed idempotency for reserve and confirm
-- Zod validation for reservation creation and reservation route parameters
-
-Not complete yet:
-
-- Automated real Postgres integration run in CI or against hosted test infrastructure
-- Payment orchestration beyond reservation confirmation
-
-[^vercel-cron]: Vercel Cron Jobs docs: https://vercel.com/docs/cron-jobs and https://vercel.com/docs/cron-jobs/manage-cron-jobs
-[^prisma-vercel]: Prisma deployment guidance for Vercel recommends generating Prisma Client in `postinstall`: https://www.prisma.io/docs/guides/deployment/deployment-guides/deploying-to-vercel
